@@ -4,3 +4,4 @@ ve/*
 .env*
 .coverage
 postgres/*
+zappa_settings.json

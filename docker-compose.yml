@@ -9,9 +9,9 @@ services:
       - "5432:5432"
   web:
     build: .
-    command: python3 project/manage.py runserver 0.0.0.0:8000
+    command: "python3 ./${PROJECT_NAME}/manage.py runserver 0.0.0.0:8000"
     volumes:
-      - ./project:/var/task/project
+      - ./${PROJECT_NAME}:/var/task/${PROJECT_NAME}
       - ./ve:/var/task/ve
       - ~/.aws/:/root/.aws
       - ~/.ssh/:/root/.ssh
@@ -22,5 +22,6 @@ services:
     environment:
       - DJANGO_ENV=docker
       - AWS_PROFILE=default
+      - PROJECT_NAME=${PROJECT_NAME}
     depends_on:
       - db
