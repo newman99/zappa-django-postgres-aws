@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./postgresql/data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  web:
+    build: .
+    command: python3 project/manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./project:/var/task/project
+      - ./ve:/var/task/ve
+      - ~/.aws/:/root/.aws
+      - ~/.ssh/:/root/.ssh
+      - ~/.gitconfig/:/root/.gitconfig
+      - ~/.vimrc.simple:/root/.vimrc
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_ENV=docker
+      - AWS_PROFILE=default
+    depends_on:
+      - db

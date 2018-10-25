@@ -1,0 +1,6 @@
+*.pyc
+.ropeproject/*
+ve/*
+.env*
+.coverage
+postgres/*

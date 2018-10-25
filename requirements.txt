@@ -1,0 +1,16 @@
+django-split-settings==0.3.0
+Django==2.1.2
+python-decouple==3.1
+django-countries==5.1.1
+zappa==0.47.0
+django-localflavor==2.1
+django-cors-headers==2.4.0
+django-rest-auth==0.9.3
+djangorestframework==3.9.0
+djangorestframework-jwt==1.11.0
+djangorestframework-simplejwt==3.2.3
+django-allauth==0.38.0
+psycopg2-binary==2.7.5
+numpy==1.15.2
+datedelta==1.2
+coreapi==2.3.3
