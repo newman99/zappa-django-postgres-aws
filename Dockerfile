@@ -7,7 +7,7 @@ MAINTAINER "Matthew Newman" <newman99@gmail.com>
 WORKDIR /var/task
 COPY requirements.txt /var/task
 RUN pip install -r requirements.txt
-COPY . /var/task
+COPY zappa_settings.json /var/task
 
 # Fancy prompt to remind you are in zappashell
 RUN echo 'export PS1="\[\e[36m\]zappashell>\[\e[m\] "' >> /root/.bashrc

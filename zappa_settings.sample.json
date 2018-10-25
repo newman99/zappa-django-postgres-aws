@@ -1,11 +1,26 @@
 {
     "dev": {
-        "aws_region": "us-east-1",
+        "aws_region": "AWS_REGION",
         "django_settings": "PROJECT_NAME.PROJECT_NAME.settings",
         "profile_name": "default",
         "project_name": "PROJECT_NAME",
         "runtime": "python3.6",
         "s3_bucket": "S3_BUCKET"
+        "timeout_seconds": 300,
+        "use_precompiled_packages": true,
+        "environment_variables": {
+            "DJANGO_ENV": "development"
+        }
+    },
+    "vpc_config": {
+        "SubnetIds": [
+          "SUBNET_ID"
+        ],
+        "SecurityGroupIds": [
+          "SECURITY_GROUP_ID"
+        ]
+
     }
 }
+
 
