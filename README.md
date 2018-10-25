@@ -21,3 +21,5 @@ Enter the values in the .env file.
 `./manage.py migrate`
 
 `./manage.py createsuperuser`
+
+`zappa deploy $ZAPPA_DEPLOYMENT_TYPE`
