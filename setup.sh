@@ -1,5 +1,5 @@
 #!/bin/sh
-export $(egrep -v '^#' .env | xargs)
+export $(egrep -v '^#' .env | xargs -d '\n')
 AWS_REGION=$(egrep region ~/.aws/config | cut -d '=' -f2)
 
 S3_BUCKET="zappa-"`cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 9 | head -1`
