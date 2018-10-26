@@ -23,5 +23,6 @@ services:
       - DJANGO_ENV=docker
       - AWS_PROFILE=default
       - PROJECT_NAME=${PROJECT_NAME}
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       - db
