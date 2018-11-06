@@ -5,8 +5,6 @@ ENV PYTHONUNBUFFERED 1
 MAINTAINER "Matthew Newman" <newman99@gmail.com>
 
 WORKDIR /var/task
-COPY requirements.txt /var/task
-RUN pip install -r requirements.txt
 COPY zappa_settings.json /var/task
 
 # Fancy prompt to remind you are in zappashell
@@ -18,5 +16,7 @@ RUN echo 'source /var/task/ve/bin/activate' >> /root/.bashrc
 # Additional RUN commands here
 # RUN yum clean all && \
 #    yum -y install <stuff>
+RUN pip install --upgrade pip
+RUN pip install -U boto3 awscli
 
 CMD ["bash"]

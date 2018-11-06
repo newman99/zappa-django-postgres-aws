@@ -1,6 +1,7 @@
 *.pyc
 .ropeproject/*
 ve/*
+venv/*
 .env*
 .coverage
 postgres/*
