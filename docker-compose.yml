@@ -9,10 +9,10 @@ services:
       - "5432:5432"
   web:
     build: .
+    image: ${PROJECT_NAME}_web
     command: "python3 ./${PROJECT_NAME}/manage.py runserver 0.0.0.0:8000"
     volumes:
-      - ./${PROJECT_NAME}:/var/task/${PROJECT_NAME}
-      - ./ve:/var/task/ve
+      - .:/var/task
       - ~/.aws/:/root/.aws
       - ~/.ssh/:/root/.ssh
       - ~/.gitconfig/:/root/.gitconfig
@@ -21,8 +21,7 @@ services:
       - "8000:8000"
     environment:
       - DJANGO_ENV=docker
-      - AWS_PROFILE=default
       - PROJECT_NAME=${PROJECT_NAME}
-      - SECRET_KEY=${SECRET_KEY}
+      - PYTHONPATH=/var/task/ve/lib/python3.6/site-packages/:/var/runtime
     depends_on:
       - db
