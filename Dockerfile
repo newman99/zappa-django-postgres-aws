@@ -5,7 +5,6 @@ ENV PYTHONUNBUFFERED 1
 MAINTAINER "Matthew Newman" <newman99@gmail.com>
 
 WORKDIR /var/task
-COPY zappa_settings.json /var/task
 
 # Fancy prompt to remind you are in zappashell
 RUN echo 'export PS1="\[\e[36m\]zappashell>\[\e[m\] "' >> /root/.bashrc
