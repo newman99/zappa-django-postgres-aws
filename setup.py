@@ -21,6 +21,8 @@ def main():
     """Main."""
     args = process_args()
 
+    info = collect_info()
+
     if args.build:
         subprocess.run(['docker-compose', 'build'])
 
@@ -39,16 +41,23 @@ def main():
         ])
 
     if args.requirements:
-        subprocess.run(
-            ['docker run -ti -v {}:/var/task {}_web:latest /bin/bash -c "source ve/bin/activate && ve/bin/pip install -r requirements.txt"'.format(os.getcwd(), args.project_name)], # noqa
-            shell=True
-        )
+        subprocess.run([
+            'docker',
+            'run',
+            '-v',
+            '{}:/var/task'.format(os.getcwd()),
+            '{}_web:latest'.format(args.project_name),
+            '/bin/bash',
+            '-c',
+            'source ve/bin/activate && pip install -r requirements.txt'
+        ])
 
     if args.startapp:
         if os.path.exists(args.project_name):
             print('Error: a project named "{}" already exists.'.format(
                 args.project_name))
         else:
+            print('STARTPROJECT')
             subprocess.run([
                 'docker',
                 'run',
@@ -61,11 +70,48 @@ def main():
                 args.project_name,
                 '--template={}'.format(TEMPLATE)
             ])
+            print('MIGRATE')
+            subprocess.run([
+                'docker-compose',
+                'up',
+                '-d'
+            ])
+            subprocess.run([
+                'docker-compose',
+                'exec',
+                'web',
+                '/var/task/{}/manage.py'.format(args.project_name),
+                'migrate'
+            ])
+            print('CREATESUPERUSER')
+            subprocess.run([
+                'docker-compose',
+                'exec',
+                'web',
+                '/bin/bash',
+                '-c',
+                '''/var/task/test3/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
+                    info['name'], info['email'], info['password']
+                )
+            ])
+            subprocess.run([
+                'docker-compose',
+                'down'
+            ])
 
     if args.aws:
         create_aws(args)
 
     exit(0)
+
+
+def collect_info():
+    """Collect some user info."""
+    info = {}
+    info['name'] = input('Admin username? ')
+    info['email'] = input('Email address? ')
+    info['password'] = input('Admin password? ')
+    return info
 
 
 def create_aws(args):
