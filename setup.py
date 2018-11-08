@@ -36,11 +36,13 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               help='Install requirements.txt using pip.', show_default=True)
 @click.option('-s', '--startapp', is_flag=True,
               help='Create a new Django project.', show_default=True)
+@click.option('-t', '--template', default=TEMPLATE,
+              help="Django startapp template file")
 @click.option('-v', '--virtual', is_flag=True,
               help='Create a new Python virtual environment.',
               show_default=True)
 def main(project_name, name, email, password, aws, build, buildall,
-         requirements, startapp, virtual):
+         requirements, startapp, virtual, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
     Build and deploy a Django app in Docker for local development and
@@ -177,7 +179,10 @@ def create_zappa_settings(env):
             "manage_roles": False,
             "role_name": "Zappa"
         },
-        'vpc_config': {'SubnetIds': [], 'SecurityGroupIds': []}
+        'vpc_config': {
+            'SubnetIds': ['subnet-f848d9d6', 'subnet-f55bd192'],
+            'SecurityGroupIds': ['sg-e3728fa2']
+        }
     }
 
     zappa['vpc_config']['SecurityGroupIds'] = env['SecurityGroupIds']
