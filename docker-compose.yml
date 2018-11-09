@@ -9,6 +9,8 @@ services:
       - "5432:5432"
   web:
     build: .
+    env_file:
+      - .env
     image: ${PROJECT_NAME}_web
     command: "python3 ./${PROJECT_NAME}/manage.py runserver 0.0.0.0:8000"
     volumes:
