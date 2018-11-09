@@ -46,6 +46,8 @@ def main(project_name, name, email, password, aws, build, buildall,
     Build and deploy a Django app in Docker for local development and
     on AWS Lambda using Zappa.
     """
+    os.environ['PROJECT_NAME'] = project_name
+
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
 
