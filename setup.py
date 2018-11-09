@@ -9,7 +9,6 @@ import os
 import json
 import random
 import string
-from pathlib import Path
 import boto3
 import botocore
 import click
@@ -19,28 +18,27 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
 
 @click.command()
 @click.argument('project_name')
-@click.option('-a', '--aws', is_flag=True, help='Create AWS resources.',
-              show_default=True)
-@click.option('-B', '--buildall', is_flag=True, help='Build all',
-              show_default=True)
-@click.option('-b', '--build', is_flag=True, help='Build Docker container.',
-              show_default=True)
-@click.option('-e', '--email', prompt='Enter you Django admin email address',
-              help="Django admin email")
-@click.option('-n', '--name', prompt='Enter you Django admin username',
-              help="Django admin username", default='admin', show_default=True)
-@click.option('-p', '--password', prompt='Enter you Django admin password',
-              hide_input=True, confirmation_prompt=True,
-              help="Django admin password")
-@click.option('-r', '--requirements', is_flag=True,
-              help='Install requirements.txt using pip.', show_default=True)
-@click.option('-s', '--startapp', is_flag=True,
-              help='Create a new Django project.', show_default=True)
+@click.option('-a', '--aws', is_flag=True, show_default=True,
+              help='Create AWS resources.')
+@click.option('-B', '--buildall', is_flag=True, show_default=True,
+              help='Build all')
+@click.option('-b', '--build', is_flag=True, show_default=True,
+              help='Build Docker container.')
+@click.option('-r', '--requirements', is_flag=True, show_default=True,
+              help='Install requirements.txt using pip.')
+@click.option('-s', '--startapp', is_flag=True, show_default=True,
+              help='Create a new Django project.')
 @click.option('-t', '--template', default=TEMPLATE,
               help="Django startapp template file")
-@click.option('-v', '--virtual', is_flag=True,
-              help='Create a new Python virtual environment.',
-              show_default=True)
+@click.option('-v', '--virtual', is_flag=True, show_default=True,
+              help='Create a new Python virtual environment.')
+@click.option('--name', prompt='Enter you Django admin username',
+              default='admin', show_default=True, help="Django admin username")
+@click.option('--email', prompt='Enter you Django admin email address',
+              help="Django admin email")
+@click.option('--password', prompt='Enter your Django admin password',
+              hide_input=True, confirmation_prompt=True,
+              help="Django admin password")
 def main(project_name, name, email, password, aws, build, buildall,
          requirements, startapp, virtual, template):
     """Django - Docker - Zappa - AWS - Lambda.
@@ -82,7 +80,7 @@ def main(project_name, name, email, password, aws, build, buildall,
             print('Error: a project named "{}" already exists.'.format(
                 project_name))
         else:
-            print('STARTPROJECT')
+            click.echo('STARTPROJECT')
             subprocess.run([
                 'docker',
                 'run',
@@ -95,7 +93,7 @@ def main(project_name, name, email, password, aws, build, buildall,
                 project_name,
                 '--template={}'.format(TEMPLATE)
             ])
-            print('MIGRATE')
+            click.echo('MIGRATE')
             subprocess.run([
                 'docker-compose',
                 'up',
@@ -108,7 +106,7 @@ def main(project_name, name, email, password, aws, build, buildall,
                 '/var/task/{}/manage.py'.format(project_name),
                 'migrate'
             ])
-            print('CREATESUPERUSER')
+            click.echo('CREATESUPERUSER')
             subprocess.run([
                 'docker-compose',
                 'exec',
@@ -126,6 +124,8 @@ def main(project_name, name, email, password, aws, build, buildall,
 
     if aws or buildall:
         create_aws(project_name)
+
+    create_zappa_settings(project_name)
 
     exit(0)
 
@@ -162,14 +162,80 @@ def create_aws(project_name):
         else:
             print(e)
 
-    create_zappa_settings(env)
 
-
-def create_zappa_settings(env):
+def create_zappa_settings(project_name):
     """Create the zappa_settings.json file."""
+    session = botocore.session.Session()
+    config = session.full_config
+    profiles = config.get('profiles', {})
+    profile_names = list(profiles.keys())
+
+    if not profile_names:
+        click.echo('Error: Set up the ~/.aws/credentials file.')
+        exit(1)
+    elif len(profile_names) == 1:
+        profile_name = profile_names[0]
+        profile = profiles[profile_name]
+        click.echo("Okay, using profile {}!".format(
+            click.style(profile_name, bold=True))
+        )
+    else:
+        if "default" in profile_names:
+            default_profile = [p for p in profile_names if p == "default"][0]
+        else:
+            default_profile = profile_names[0]
+        while True:
+            profile_name = input(
+                "We found the following profiles: {}, and {}. "
+                "Which would you like us to use? (default '{}'): "
+                .format(
+                     ', '.join(profile_names[:-1]),
+                     profile_names[-1],
+                     default_profile
+                 )) or default_profile
+            if profile_name in profiles:
+                profile = profiles[profile_name]
+                break
+
+    profile_region = profile.get("region") if profile else None
+
+    session = boto3.Session(profile_name=profile_name)
+    s3_client = session.client('ec2')
+    security_groups = s3_client.describe_security_groups(
+        Filters=[{
+            'Name': 'description', 'Values': ['default VPC security group', ]
+        }]
+    )
+
+    group_ids = []
+    for sg in security_groups['SecurityGroups']:
+        group_ids.append(sg['GroupId'])
+
+    vpc = s3_client.describe_vpcs()
+
+    subnets = s3_client.describe_subnets(
+        Filters=[
+            {'Name': 'vpc-id', 'Values': [vpc['Vpcs'][0]['VpcId'], ]},
+            {
+                'Name': 'availability-zone',
+                'Values': ['us-east-1a', 'us-east-1b']
+            }
+        ]
+    )
+
+    subnet_ids = []
+    for sn in subnets['Subnets']:
+        subnet_ids.append(sn['SubnetId'])
+
     zappa = {
         'dev': {
-            'profile_name': 'newman99',
+            'project_name': project_name,
+            'django_settings': '{0}.{0}.settings'.format(project_name),
+            'profile_name': profile_name,
+            'profile-region': profile_region,
+            's3_bucket': 'zappa-{}'.format(''.join(
+                random.choices(string.ascii_lowercase + string.digits, k=9))
+            ),
             'runtime': 'python3.6',
             'timeout_seconds': 300,
             'use_precompiled_packages': True,
@@ -180,25 +246,13 @@ def create_zappa_settings(env):
             "role_name": "Zappa"
         },
         'vpc_config': {
-            'SubnetIds': ['subnet-f848d9d6', 'subnet-f55bd192'],
-            'SecurityGroupIds': ['sg-e3728fa2']
+            'SubnetIds': subnet_ids,
+            'SecurityGroupIds': group_ids
         }
     }
 
-    zappa['vpc_config']['SecurityGroupIds'] = env['SecurityGroupIds']
-
     zappa['dev']['s3_bucket'] = 'zappa-{}'.format(
         ''.join(random.choices(string.ascii_lowercase + string.digits, k=9)))
-
-    with open('{}/.aws/config'.format(Path.home())) as fp:
-        for line in fp:
-            if 'region' in line:
-                (a, b) = line.rstrip().split(' = ')
-                zappa['dev']['aws_region'] = b
-
-    zappa['dev']['project_name'] = '{0}'.format(env['PROJECT_NAME'])
-    zappa['dev']['django_settings'] = '{0}.{0}.settings'.format(
-        env['PROJECT_NAME'])
 
     with open('zappa_settings.json', 'w') as fp:
         fp.write(json.dumps(zappa, indent=4, sort_keys=True))
