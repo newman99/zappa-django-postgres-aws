@@ -32,14 +32,16 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               help="Django startapp template file")
 @click.option('-v', '--virtual', is_flag=True, show_default=True,
               help='Create a new Python virtual environment.')
-@click.option('--name', prompt='Enter you Django admin username',
+@click.option('--name', prompt='Enter your full name',
               default='admin', show_default=True, help="Django admin username")
-@click.option('--email', prompt='Enter you Django admin email address',
+@click.option('--username', prompt='Enter your Django admin username',
+              default='admin', show_default=True, help="Django admin username")
+@click.option('--email', prompt='Enter your Django admin email address',
               help="Django admin email")
 @click.option('--password', prompt='Enter your Django admin password',
               hide_input=True, confirmation_prompt=True,
               help="Django admin password")
-def main(project_name, name, email, password, aws, build, buildall,
+def main(project_name, name, username, email, password, aws, build, buildall,
          requirements, startapp, virtual, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
@@ -116,7 +118,7 @@ def main(project_name, name, email, password, aws, build, buildall,
                 '/bin/bash',
                 '-c',
                 '''/var/task/{}/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
-                    project_name, name, email, password
+                    project_name, username, email, password
                 )
             ])
             subprocess.run([
@@ -129,7 +131,32 @@ def main(project_name, name, email, password, aws, build, buildall,
 
     create_zappa_settings(project_name)
 
+    create_env_file(project_name, name, email)
+
     exit(0)
+
+
+def create_env_file(project_name, name, email):
+    """Create the .env file."""
+    env = {
+        'PROJECT_NAME': project_name,
+        'ADMIN_USER': name,
+        'ADMIN_EMAIL': email,
+        'DB_NAME': 'postgres',
+        'DB_USER': 'postgres',
+        'DB_PASSWORD': 'postgres',
+        'AWS_LAMBDA_HOST': '',
+        'AWS_RDS_HOST': '',
+        'ZAPPA_DEPLOYMENT_TYPE': 'dev',
+        'DJANGO_SECRET_KEY': '',
+        'AWS_ACCESS_KEY_ID': '{}'.format(''.join(
+            random.choices(string.ascii_lowercase + string.digits, k=50))),
+        'AWS_SECRET_ACCESS_KEY': '',
+        'AWS_STORAGE_BUCKET_NAME': 'zappa-django-{}'.format(project_name)
+    }
+    with open('test.env', 'w') as fp:
+        for e in env:
+            fp.write('{}={}\n'.format(e, env[e]))
 
 
 def create_aws(project_name):
