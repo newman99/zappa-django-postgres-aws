@@ -153,7 +153,7 @@ def create_env_file(project_name, name, email):
         'AWS_SECRET_ACCESS_KEY': '',
         'AWS_STORAGE_BUCKET_NAME': 'zappa-django-{}'.format(project_name)
     }
-    with open('test.env', 'w') as fp:
+    with open('.env', 'w') as fp:
         for e in env:
             fp.write('{}={}\n'.format(e, env[e]))
 
