@@ -49,7 +49,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     """
     os.environ['PROJECT_NAME'] = project_name
 
-    create_zappa_settings(project_name)
+    create_env_file(project_name, name, email)
 
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
@@ -130,7 +130,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     if aws or buildall:
         create_aws(project_name)
 
-    create_env_file(project_name, name, email)
+    create_zappa_settings(project_name)
 
     exit(0)
 
