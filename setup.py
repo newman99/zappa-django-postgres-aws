@@ -32,8 +32,7 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               help="Django startapp template file")
 @click.option('-v', '--virtual', is_flag=True, show_default=True,
               help='Create a new Python virtual environment.')
-@click.option('--name', prompt='Enter your full name',
-              default='admin', show_default=True, help="Django admin username")
+@click.option('--name', prompt='Enter your full name', help="Full name")
 @click.option('--username', prompt='Enter your Django admin username',
               default='admin', show_default=True, help="Django admin username")
 @click.option('--email', prompt='Enter your Django admin email address',
@@ -49,6 +48,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     on AWS Lambda using Zappa.
     """
     os.environ['PROJECT_NAME'] = project_name
+
+    create_zappa_settings(project_name)
 
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
@@ -129,8 +130,6 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     if aws or buildall:
         create_aws(project_name)
 
-    create_zappa_settings(project_name)
-
     create_env_file(project_name, name, email)
 
     exit(0)
@@ -148,9 +147,9 @@ def create_env_file(project_name, name, email):
         'AWS_LAMBDA_HOST': '',
         'AWS_RDS_HOST': '',
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
-        'DJANGO_SECRET_KEY': '',
-        'AWS_ACCESS_KEY_ID': '{}'.format(''.join(
+        'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
+        'AWS_ACCESS_KEY_ID': '',
         'AWS_SECRET_ACCESS_KEY': '',
         'AWS_STORAGE_BUCKET_NAME': 'zappa-django-{}'.format(project_name)
     }
