@@ -148,7 +148,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     create_zappa_settings(project_name, session)
 
-    if zappa:
+    if zappa or buildall:
         aws_lambda_host = deploy_zappa(project_name)
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
