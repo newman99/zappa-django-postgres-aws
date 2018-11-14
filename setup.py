@@ -7,13 +7,14 @@ the Docker images.
 import subprocess
 import os
 import re
+import time
 import json
 import random
 import string
 import boto3
 import botocore
 import click
-from troposphere import Template
+from troposphere import Template, GetAtt, Output
 from troposphere.rds import DBInstance
 
 TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
@@ -54,9 +55,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     session = create_boto_session()
 
-    create_rds(project_name, session)
-
-    create_env_file(project_name, name, email)
+    stack_name = create_rds(project_name, session)
 
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
@@ -87,9 +86,13 @@ def main(project_name, name, username, email, password, aws, build, buildall,
             'source ve/bin/activate && pip install -r requirements.txt'
         ])
 
+    aws_rds_host = get_aws_rds_host(stack_name, session)
+
+    create_env_file(project_name, name, email, aws_rds_host)
+
     if startapp or buildall:
         if os.path.exists(project_name):
-            print('Error: a project named "{}" already exists.'.format(
+            click.echo('Error: a project named "{}" already exists.'.format(
                 project_name))
         else:
             click.echo('STARTPROJECT')
@@ -142,7 +145,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     exit(0)
 
 
-def create_env_file(project_name, name, email):
+def create_env_file(project_name, name, email, aws_rds_host):
     """Create the .env file."""
     env = {
         'PROJECT_NAME': project_name,
@@ -152,7 +155,7 @@ def create_env_file(project_name, name, email):
         'DB_USER': 'postgres',
         'DB_PASSWORD': 'postgres',
         'AWS_LAMBDA_HOST': '',
-        'AWS_RDS_HOST': '',
+        'AWS_RDS_HOST': aws_rds_host,
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
         'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
@@ -195,7 +198,7 @@ def create_aws(project_name):
         if e.response['Error']['Code'] == 'InvalidPermission.Duplicate':
             pass
         else:
-            print(e)
+            click.echo(e)
 
 
 def create_boto_session():
@@ -300,11 +303,13 @@ def create_zappa_settings(project_name, session):
 
 def create_rds(project_name, session):
     """Create Postgres RDS instance using troposphere."""
+    stack_name = '{}-zappa'.format(project_name)
+
     t = Template()
 
     t.add_description("RDS PostgreSQL DB instance for Zappa Django project.")
 
-    t.add_resource(DBInstance(
+    db_instance = t.add_resource(DBInstance(
         '{}Zappa'.format(re.sub(
             r'-([a-z,A-Z,0-9])',
             lambda x: x.group(1).upper(), project_name.capitalize()
@@ -313,18 +318,41 @@ def create_rds(project_name, session):
         DBInstanceClass="db.t2.micro",
         Engine="postgres",
         EngineVersion="10.4",
+        DBInstanceIdentifier='{}-zappa'.format(project_name),
         MasterUsername="postgres",
-        MasterUserPassword="postgres"
+        MasterUserPassword="postgres",
+        PubliclyAccessible=False
     ))
 
-    print(t.to_json())
+    t.add_output(Output(
+        'AwsRdsHost',
+        Description='AWS RDS HOST',
+        Value=GetAtt(db_instance, "Endpoint.Address")
+    ))
 
-    client = session.client('cloudformation')
-    response = client.create_stack(
-        StackName='{}-zappa'.format(project_name),
+    resource = session.resource('cloudformation')
+    resource.create_stack(
+        StackName=stack_name,
         TemplateBody=t.to_json()
     )
-    print(response)
+
+    return stack_name
+
+
+def get_aws_rds_host(stack_name, session):
+    """Get the AWS RDS host."""
+    client = session.client('cloudformation')
+    stack_status = None
+    while stack_status != 'CREATE_COMPLETE':
+        click.echo("Waiting for stack creation...")
+        time.sleep(120)
+        response = client.describe_stacks(
+            StackName=stack_name
+        )
+        stack_status = response['Stacks'][0]['StackStatus']
+    aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
+
+    return aws_rds_host
 
 
 if __name__ == '__main__':
