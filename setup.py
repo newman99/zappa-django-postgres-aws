@@ -94,7 +94,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     aws_rds_host = get_aws_rds_host(stack_name, session)
 
     with open('.env', 'a') as fp:
-        fp.write('AWS_RDS_HOST={}'.format(aws_rds_host))
+        fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
 
     if startapp or buildall:
         if os.path.exists(project_name):
