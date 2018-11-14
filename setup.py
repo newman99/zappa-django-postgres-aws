@@ -55,7 +55,6 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     session = create_boto_session()
 
     create_rds(project_name, session)
-    exit(0)
 
     create_env_file(project_name, name, email)
 
