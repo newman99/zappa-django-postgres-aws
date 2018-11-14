@@ -270,7 +270,7 @@ def create_zappa_settings(project_name, session):
             'project_name': project_name,
             'django_settings': '{0}.{0}.settings'.format(project_name),
             'profile_name': session.profile_name,
-            'profile-region': session.profile_region,
+            'profile-region': session.region_name,
             's3_bucket': 'zappa-{}'.format(''.join(
                 random.choices(string.ascii_lowercase + string.digits, k=9))
             ),
