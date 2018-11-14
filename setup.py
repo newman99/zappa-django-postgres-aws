@@ -90,7 +90,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     aws_rds_host = get_aws_rds_host(stack_name, session)
 
-    create_env_file(project_name, name, email, aws_rds_host)
+    with open('.env', 'a') as fp:
+        fp.write('AWS_RDS_HOST={}'.format(aws_rds_host))
 
     if startapp or buildall:
         if os.path.exists(project_name):
@@ -144,10 +145,12 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     create_zappa_settings(project_name, session)
 
+    deploy_zappa(project_name)
+
     exit(0)
 
 
-def create_env_file(project_name, name, email, aws_rds_host):
+def create_env_file(project_name, name, email):
     """Create the .env file."""
     env = {
         'PROJECT_NAME': project_name,
@@ -157,7 +160,6 @@ def create_env_file(project_name, name, email, aws_rds_host):
         'DB_USER': 'postgres',
         'DB_PASSWORD': 'postgres',
         'AWS_LAMBDA_HOST': '',
-        'AWS_RDS_HOST': aws_rds_host,
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
         'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
@@ -355,6 +357,29 @@ def get_aws_rds_host(stack_name, session):
     aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
 
     return aws_rds_host
+
+
+def deploy_zappa(project_name):
+    """Deploy to AWS Lambda using Zappa."""
+    subprocess.run([
+        'docker-compose',
+        'up',
+        '-d'
+    ])
+    subprocess.run([
+        'docker',
+        'run',
+        '-v',
+        '{}:/var/task'.format(os.getcwd()),
+        '{}_web:latest'.format(project_name),
+        'zappa',
+        'deploy',
+        'dev'
+    ])
+    subprocess.run([
+        'docker-compose',
+        'down'
+    ])
 
 
 if __name__ == '__main__':
