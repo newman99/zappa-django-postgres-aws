@@ -14,6 +14,7 @@ import string
 import boto3
 import botocore
 import click
+from pathlib import Path
 from troposphere import Template, GetAtt, Output
 from troposphere.rds import DBInstance
 
@@ -36,6 +37,8 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               help="Django startapp template file")
 @click.option('-v', '--virtual', is_flag=True, show_default=True,
               help='Create a new Python virtual environment.')
+@click.option('-z', '--zappa', is_flag=True, show_default=True,
+              help='Deploy Zappa.')
 @click.option('--name', prompt='Enter your full name', help="Full name")
 @click.option('--username', prompt='Enter your Django admin username',
               default='admin', show_default=True, help="Django admin username")
@@ -45,7 +48,7 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               hide_input=True, confirmation_prompt=True,
               help="Django admin password")
 def main(project_name, name, username, email, password, aws, build, buildall,
-         requirements, startapp, virtual, template):
+         requirements, startapp, virtual, zappa, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
     Build and deploy a Django app in Docker for local development and
@@ -57,7 +60,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     stack_name = create_rds(project_name, session)
 
-    create_env_file(project_name, name, email, "")
+    create_env_file(project_name, name, email)
 
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
@@ -145,7 +148,11 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     create_zappa_settings(project_name, session)
 
-    deploy_zappa(project_name)
+    if zappa:
+        aws_lambda_host = deploy_zappa(project_name)
+        with open('.env', 'a') as fp:
+            fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
+        update_zappa(project_name)
 
     exit(0)
 
@@ -159,7 +166,6 @@ def create_env_file(project_name, name, email):
         'DB_NAME': 'postgres',
         'DB_USER': 'postgres',
         'DB_PASSWORD': 'postgres',
-        'AWS_LAMBDA_HOST': '',
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
         'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
@@ -362,24 +368,57 @@ def get_aws_rds_host(stack_name, session):
 def deploy_zappa(project_name):
     """Deploy to AWS Lambda using Zappa."""
     subprocess.run([
-        'docker-compose',
-        'up',
-        '-d'
+        'docker',
+        'run',
+        '-v',
+        '{}:/var/task'.format(Path.cwd()),
+        '-v',
+        '{}/.aws:/root/.aws'.format(Path.home()),
+        '{}_web:latest'.format(project_name),
+        '/bin/bash',
+        '-c',
+        'source ve/bin/activate && zappa deploy dev'
     ])
+
+    return get_lambda_host(project_name)
+
+
+def update_zappa(project_name):
+    """Deploy to AWS Lambda using Zappa."""
     subprocess.run([
         'docker',
         'run',
         '-v',
-        '{}:/var/task'.format(os.getcwd()),
+        '{}:/var/task'.format(Path.cwd()),
+        '-v',
+        '{}/.aws:/root/.aws'.format(Path.home()),
         '{}_web:latest'.format(project_name),
-        'zappa',
-        'deploy',
-        'dev'
+        '/bin/bash',
+        '-c',
+        'source ve/bin/activate && zappa update dev'
     ])
-    subprocess.run([
-        'docker-compose',
-        'down'
+
+
+def get_lambda_host(project_name):
+    """Get Lambda host."""
+    output = subprocess.check_output([
+        'docker',
+        'run',
+        '-v',
+        '{}:/var/task'.format(Path.cwd()),
+        '-v',
+        '{}/.aws:/root/.aws'.format(Path.home()),
+        '{}_web:latest'.format(project_name),
+        '/bin/bash',
+        '-c',
+        'source ve/bin/activate && zappa status dev'
     ])
+
+    for line in output.split(b'\n'):
+        tokens = line.split(b': ')
+        if tokens[0] == b'\tAPI Gateway URL':
+            aws_lambda_host = tokens[1].replace(b' ', b'').decode("utf-8")
+            return aws_lambda_host
 
 
 if __name__ == '__main__':
