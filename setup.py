@@ -6,12 +6,15 @@ the Docker images.
 """
 import subprocess
 import os
+import re
 import json
 import random
 import string
 import boto3
 import botocore
 import click
+from troposphere import Template
+from troposphere.rds import DBInstance
 
 TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
 
@@ -48,6 +51,11 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     on AWS Lambda using Zappa.
     """
     os.environ['PROJECT_NAME'] = project_name
+
+    session = create_boto_session()
+
+    create_rds(project_name, session)
+    exit(0)
 
     create_env_file(project_name, name, email)
 
@@ -130,7 +138,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     if aws or buildall:
         create_aws(project_name)
 
-    create_zappa_settings(project_name)
+    create_zappa_settings(project_name, session)
 
     exit(0)
 
@@ -191,8 +199,8 @@ def create_aws(project_name):
             print(e)
 
 
-def create_zappa_settings(project_name):
-    """Create the zappa_settings.json file."""
+def create_boto_session():
+    """Create boto session."""
     session = botocore.session.Session()
     config = session.full_config
     profiles = config.get('profiles', {})
@@ -203,7 +211,6 @@ def create_zappa_settings(project_name):
         exit(1)
     elif len(profile_names) == 1:
         profile_name = profile_names[0]
-        profile = profiles[profile_name]
         click.echo("Okay, using profile {}!".format(
             click.style(profile_name, bold=True))
         )
@@ -222,14 +229,18 @@ def create_zappa_settings(project_name):
                      default_profile
                  )) or default_profile
             if profile_name in profiles:
-                profile = profiles[profile_name]
                 break
 
-    profile_region = profile.get("region") if profile else None
-
     session = boto3.Session(profile_name=profile_name)
-    s3_client = session.client('ec2')
-    security_groups = s3_client.describe_security_groups(
+
+    return session
+
+
+def create_zappa_settings(project_name, session):
+    """Create the zappa_settings.json file."""
+    client = session.client('ec2')
+
+    security_groups = client.describe_security_groups(
         Filters=[{
             'Name': 'description', 'Values': ['default VPC security group', ]
         }]
@@ -239,9 +250,9 @@ def create_zappa_settings(project_name):
     for sg in security_groups['SecurityGroups']:
         group_ids.append(sg['GroupId'])
 
-    vpc = s3_client.describe_vpcs()
+    vpc = client.describe_vpcs()
 
-    subnets = s3_client.describe_subnets(
+    subnets = client.describe_subnets(
         Filters=[
             {'Name': 'vpc-id', 'Values': [vpc['Vpcs'][0]['VpcId'], ]},
             {
@@ -259,8 +270,8 @@ def create_zappa_settings(project_name):
         'dev': {
             'project_name': project_name,
             'django_settings': '{0}.{0}.settings'.format(project_name),
-            'profile_name': profile_name,
-            'profile-region': profile_region,
+            'profile_name': session.profile_name,
+            'profile-region': session.profile_region,
             's3_bucket': 'zappa-{}'.format(''.join(
                 random.choices(string.ascii_lowercase + string.digits, k=9))
             ),
@@ -286,6 +297,35 @@ def create_zappa_settings(project_name):
         fp.write(json.dumps(zappa, indent=4, sort_keys=True))
 
     return zappa
+
+
+def create_rds(project_name, session):
+    """Create Postgres RDS instance using troposphere."""
+    t = Template()
+
+    t.add_description("RDS PostgreSQL DB instance for Zappa Django project.")
+
+    t.add_resource(DBInstance(
+        '{}Zappa'.format(re.sub(
+            r'-([a-z,A-Z,0-9])',
+            lambda x: x.group(1).upper(), project_name.capitalize()
+        )),
+        AllocatedStorage="20",
+        DBInstanceClass="db.t2.micro",
+        Engine="postgres",
+        EngineVersion="10.4",
+        MasterUsername="postgres",
+        MasterUserPassword="postgres"
+    ))
+
+    print(t.to_json())
+
+    client = session.client('cloudformation')
+    response = client.create_stack(
+        StackName='{}-zappa'.format(project_name),
+        TemplateBody=t.to_json()
+    )
+    print(response)
 
 
 if __name__ == '__main__':
