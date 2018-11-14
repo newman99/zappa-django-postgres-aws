@@ -57,6 +57,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     stack_name = create_rds(project_name, session)
 
+    create_env_file(project_name, name, email, "")
+
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
 
