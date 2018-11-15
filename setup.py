@@ -418,6 +418,7 @@ def get_lambda_host(project_name):
         tokens = line.split(b': ')
         if tokens[0] == b'\tAPI Gateway URL':
             aws_lambda_host = tokens[1].replace(b' ', b'').decode("utf-8")
+            aws_lambda_host = aws_lambda_host.replace('https://', '')
             return aws_lambda_host
 
 
