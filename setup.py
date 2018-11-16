@@ -31,10 +31,10 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               help='Build Docker container.')
 @click.option('-r', '--requirements', is_flag=True, show_default=True,
               help='Install requirements.txt using pip.')
-@click.option('-s', '--startapp', is_flag=True, show_default=True,
+@click.option('-s', '--startproject', is_flag=True, show_default=True,
               help='Create a new Django project.')
 @click.option('-t', '--template', default=TEMPLATE,
-              help="Django startapp template file")
+              help="Django startproject template file")
 @click.option('-v', '--virtual', is_flag=True, show_default=True,
               help='Create a new Python virtual environment.')
 @click.option('-z', '--zappa', is_flag=True, show_default=True,
@@ -48,7 +48,7 @@ TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master
               hide_input=True, confirmation_prompt=True,
               help="Django admin password")
 def main(project_name, name, username, email, password, aws, build, buildall,
-         requirements, startapp, virtual, zappa, template):
+         requirements, startproject, virtual, zappa, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
     Build and deploy a Django app in Docker for local development and
@@ -96,7 +96,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     with open('.env', 'a') as fp:
         fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
 
-    if startapp or buildall:
+    if startproject or buildall:
         if os.path.exists(project_name):
             click.echo('Error: a project named "{}" already exists.'.format(
                 project_name))
@@ -111,6 +111,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 '{}_web:latest'.format(project_name),
                 '/var/task/ve/bin/django-admin',
                 'startproject',
+                '.',
                 project_name,
                 '--template={}'.format(TEMPLATE)
             ])
@@ -281,7 +282,7 @@ def create_zappa_settings(project_name, session):
     zappa = {
         'dev': {
             'project_name': project_name,
-            'django_settings': '{0}.{0}.settings'.format(project_name),
+            'django_settings': '{0}.settings'.format(project_name),
             'profile_name': session.profile_name,
             'profile-region': session.region_name,
             's3_bucket': 'zappa-{}'.format(''.join(
@@ -294,11 +295,11 @@ def create_zappa_settings(project_name, session):
                 'DJANGO_ENV': 'aws-dev'
             },
             "manage_roles": False,
-            "role_name": "Zappa"
-        },
-        'vpc_config': {
-            'SubnetIds': subnet_ids,
-            'SecurityGroupIds': group_ids
+            "role_name": "Zappa",
+            'vpc_config': {
+                'SubnetIds': subnet_ids,
+                'SecurityGroupIds': group_ids
+            }
         }
     }
 
@@ -419,6 +420,7 @@ def get_lambda_host(project_name):
         if tokens[0] == b'\tAPI Gateway URL':
             aws_lambda_host = tokens[1].replace(b' ', b'').decode("utf-8")
             aws_lambda_host = aws_lambda_host.replace('https://', '')
+            aws_lambda_host = aws_lambda_host.replace('/dev', '')
             return aws_lambda_host
 
 

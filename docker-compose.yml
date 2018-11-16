@@ -12,7 +12,7 @@ services:
     env_file:
       - .env
     image: ${PROJECT_NAME}_web
-    command: "python3 ./${PROJECT_NAME}/manage.py runserver 0.0.0.0:8000"
+    command: "python3 ./manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/var/task
       - ~/.aws/:/root/.aws
