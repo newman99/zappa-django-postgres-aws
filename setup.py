@@ -372,7 +372,8 @@ def create_stack(project_name, session):
             r'-([a-z,A-Z,0-9])',
             lambda x: x.group(1).upper(), project_name.capitalize()
         )),
-        AccessControl=PublicRead,
+        BucketName='zappa-django-{}'.format(project_name),
+        AccessControl=PublicRead
     ))
 
     t.add_output(Output(
