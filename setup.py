@@ -156,6 +156,11 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         update_zappa(project_name)
         subprocess.run([
             'docker-compose',
+            'up',
+            '-d'
+        ])
+        subprocess.run([
+            'docker-compose',
             'exec',
             'web',
             '/bin/bash',
@@ -171,6 +176,10 @@ def main(project_name, name, username, email, password, aws, build, buildall,
             """source ve/bin/activate && zappa invoke --raw dev 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser("{}", "{}", "{}")'""".format( # noqa
                 username, email, password
             )
+        ])
+        subprocess.run([
+            'docker-compose',
+            'down'
         ])
 
     exit(0)
