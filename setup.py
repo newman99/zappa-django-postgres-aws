@@ -111,8 +111,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 '{}_web:latest'.format(project_name),
                 '/var/task/ve/bin/django-admin',
                 'startproject',
-                '.',
                 project_name,
+                '.',
                 '--template={}'.format(TEMPLATE)
             ])
             click.echo('MIGRATE')
