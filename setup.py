@@ -17,6 +17,8 @@ import click
 from pathlib import Path
 from troposphere import Template, GetAtt, Output
 from troposphere.rds import DBInstance
+from troposphere.s3 import Bucket, PublicRead
+
 
 TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
 
@@ -58,9 +60,9 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     session = create_boto_session()
 
-    stack_name = create_rds(project_name, session)
+    stack_name = create_stack(project_name, session)
 
-    create_env_file(project_name, name, email)
+    create_env_file(project_name, name, email, session)
 
     if build or buildall:
         subprocess.run(['docker-compose', 'build'])
@@ -151,6 +153,9 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     if zappa or buildall:
         aws_lambda_host = deploy_zappa(project_name)
+        click.echo(
+            'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
+        )
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
         update_zappa(project_name)
@@ -185,7 +190,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     exit(0)
 
 
-def create_env_file(project_name, name, email):
+def create_env_file(project_name, name, email, session):
     """Create the .env file."""
     env = {
         'PROJECT_NAME': project_name,
@@ -197,8 +202,8 @@ def create_env_file(project_name, name, email):
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
         'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
-        'AWS_ACCESS_KEY_ID': '',
-        'AWS_SECRET_ACCESS_KEY': '',
+        'AWS_ACCESS_KEY_ID': session.get_credentials().access_key,
+        'AWS_SECRET_ACCESS_KEY': session.get_credentials().secret_key,
         'AWS_STORAGE_BUCKET_NAME': 'zappa-django-{}'.format(project_name)
     }
     with open('.env', 'w') as fp:
@@ -339,7 +344,7 @@ def create_zappa_settings(project_name, session):
     return zappa
 
 
-def create_rds(project_name, session):
+def create_stack(project_name, session):
     """Create Postgres RDS instance using troposphere."""
     stack_name = '{}-zappa'.format(project_name)
 
@@ -360,6 +365,14 @@ def create_rds(project_name, session):
         MasterUsername="postgres",
         MasterUserPassword="postgres",
         PubliclyAccessible=False
+    ))
+
+    t.add_resource(Bucket(
+        '{}S3Zappa'.format(re.sub(
+            r'-([a-z,A-Z,0-9])',
+            lambda x: x.group(1).upper(), project_name.capitalize()
+        )),
+        AccessControl=PublicRead,
     ))
 
     t.add_output(Output(
