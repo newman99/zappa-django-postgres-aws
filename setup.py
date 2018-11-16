@@ -125,7 +125,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 'docker-compose',
                 'exec',
                 'web',
-                '/var/task/{}/manage.py'.format(project_name),
+                '/var/task/manage.py'.format(project_name),
                 'migrate'
             ])
             click.echo('CREATESUPERUSER')
@@ -135,7 +135,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 'web',
                 '/bin/bash',
                 '-c',
-                '''/var/task/{}/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
+                '''/var/task/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
                     project_name, username, email, password
                 )
             ])
