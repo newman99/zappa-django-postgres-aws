@@ -125,7 +125,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 'docker-compose',
                 'exec',
                 'web',
-                '/var/task/manage.py'.format(project_name),
+                '/var/task/manage.py',
                 'migrate'
             ])
             click.echo('CREATESUPERUSER')
@@ -136,7 +136,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 '/bin/bash',
                 '-c',
                 '''/var/task/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
-                    project_name, username, email, password
+                    username, email, password
                 )
             ])
             subprocess.run([
@@ -154,6 +154,24 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
         update_zappa(project_name)
+        subprocess.run([
+            'docker-compose',
+            'exec',
+            'web',
+            '/bin/bash',
+            '-c',
+            'source ve/bin/activate && zappa manage dev migrate'
+        ])
+        subprocess.run([
+            'docker-compose',
+            'exec',
+            'web',
+            '/bin/bash',
+            '-c',
+            """source ve/bin/activate && zappa invoke --raw dev 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser("{}", "{}", "{}")'""".format( # noqa
+                username, email, password
+            )
+        ])
 
     exit(0)
 
