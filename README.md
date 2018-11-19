@@ -9,13 +9,9 @@ This project allows you to deploy a Django project on AWS using Lambda, PostgreS
 
 Install [Docker](https://www.docker.com/get-started).
 
-```
-Give examples
-```
-
 ### Installing
 
-`wget https://gitlab.com/newman99/zappa-django-postgres-aws/-/archive/master/zappa-django-postgres-aws-master.zip`
+```wget https://gitlab.com/newman99/zappa-django-postgres-aws/-/archive/master/zappa-django-postgres-aws-master.zip```
 
 `unzip zappa-django-postgres-aws-master.zip`
 
