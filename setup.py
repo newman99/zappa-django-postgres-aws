@@ -15,9 +15,10 @@ import boto3
 import botocore
 import click
 from pathlib import Path
+from urllib import urlparse
 from troposphere import Template, GetAtt, Output
 from troposphere.rds import DBInstance
-from troposphere.s3 import Bucket, PublicRead
+from troposphere.s3 import Bucket, PublicRead, CorsConfiguration, CorsRules
 
 
 TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
@@ -182,10 +183,27 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 username, email, password
             )
         ])
+        if False:
+            subprocess.run([
+                'docker',
+                'run',
+                '-v',
+                '{}/.aws:/root/.aws'.format(Path.home()),
+                '-v',
+                '{}:/var/task'.format(Path.cwd()),
+                '{}_web:latest'.format(project_name),
+                '/bin/bash',
+                '-c',
+                """source /var/task/ve/bin/activate && zappa manage dev 'collectstatic --noinput'""" # noqa
+            ])
         subprocess.run([
             'docker-compose',
             'down'
         ])
+
+    click.echo('Django website is running at http://{}/dev/'.format(
+        aws_lambda_host
+    ))
 
     exit(0)
 
@@ -373,6 +391,14 @@ def create_stack(project_name, session):
             lambda x: x.group(1).upper(), project_name.capitalize()
         )),
         BucketName='zappa-django-{}'.format(project_name),
+        CorsConfiguration=CorsConfiguration(
+            CorsRules=[CorsRules(
+                AllowedHeaders=["Authorization"],
+                AllowedMethods=["GET"],
+                AllowedOrigins=["*"],
+                MaxAge=3000
+            )],
+        ),
         AccessControl=PublicRead
     ))
 
@@ -459,9 +485,9 @@ def get_lambda_host(project_name):
     for line in output.split(b'\n'):
         tokens = line.split(b': ')
         if tokens[0] == b'\tAPI Gateway URL':
-            aws_lambda_host = tokens[1].replace(b' ', b'').decode("utf-8")
-            aws_lambda_host = aws_lambda_host.replace('https://', '')
-            aws_lambda_host = aws_lambda_host.replace('/dev', '')
+            aws_lambda_host = urlparse(
+                tokens[1].decode('utf-8').replace(' ', '')
+            ).netloc
             return aws_lambda_host
 
 
