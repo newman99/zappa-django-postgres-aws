@@ -15,7 +15,7 @@ import boto3
 import botocore
 import click
 from pathlib import Path
-from urllib import urlparse
+from urllib.parse import urlparse
 from troposphere import Template, GetAtt, Output
 from troposphere.rds import DBInstance
 from troposphere.s3 import Bucket, PublicRead, CorsConfiguration, CorsRules
@@ -364,7 +364,7 @@ def create_zappa_settings(project_name, session):
 
 def create_stack(project_name, session):
     """Create Postgres RDS instance using troposphere."""
-    stack_name = '{}-zappa'.format(project_name)
+    stack_name = '{}-zappa-rds-s3'.format(project_name)
 
     t = Template()
 
