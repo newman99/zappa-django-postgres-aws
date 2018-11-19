@@ -159,46 +159,46 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         )
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
+
         update_zappa(project_name)
+
         subprocess.run([
-            'docker-compose',
-            'up',
-            '-d'
-        ])
-        subprocess.run([
-            'docker-compose',
-            'exec',
-            'web',
+            'docker',
+            'run',
+            '-v',
+            '{}/.aws:/root/.aws'.format(Path.home()),
+            '-v',
+            '{}:/var/task'.format(Path.cwd()),
+            '{}_web:latest'.format(project_name),
             '/bin/bash',
             '-c',
             'source ve/bin/activate && zappa manage dev migrate'
         ])
         subprocess.run([
-            'docker-compose',
-            'exec',
-            'web',
+            'docker',
+            'run',
+            '-v',
+            '{}/.aws:/root/.aws'.format(Path.home()),
+            '-v',
+            '{}:/var/task'.format(Path.cwd()),
+            '{}_web:latest'.format(project_name),
             '/bin/bash',
             '-c',
             """source ve/bin/activate && zappa invoke --raw dev 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser("{}", "{}", "{}")'""".format( # noqa
                 username, email, password
             )
         ])
-        if False:
-            subprocess.run([
-                'docker',
-                'run',
-                '-v',
-                '{}/.aws:/root/.aws'.format(Path.home()),
-                '-v',
-                '{}:/var/task'.format(Path.cwd()),
-                '{}_web:latest'.format(project_name),
-                '/bin/bash',
-                '-c',
-                """source /var/task/ve/bin/activate && zappa manage dev 'collectstatic --noinput'""" # noqa
-            ])
         subprocess.run([
-            'docker-compose',
-            'down'
+            'docker',
+            'run',
+            '-v',
+            '{}/.aws:/root/.aws'.format(Path.home()),
+            '-v',
+            '{}:/var/task'.format(Path.cwd()),
+            '{}_web:latest'.format(project_name),
+            '/bin/bash',
+            '-c',
+            """source /var/task/ve/bin/activate && python manage.py collectstatic --noinput""" # noqa
         ])
 
     click.echo('Django website is running at http://{}/dev/'.format(
