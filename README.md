@@ -1,22 +1,4 @@
-
-
-`sh ./setup.sh`
-
-`docker-compose up -d`
-
-`docker-compose exec web bash`
-
-`cd $PROJECT_NAME`
-
-`./manage.py makemigrations`
-
-`./manage.py migrate`
-
-`./manage.py createsuperuser`
-
-`zappa deploy $ZAPPA_DEPLOYMENT_TYPE`
-
-# Project Title
+# Zappa - Django - AWS - Lambda, RDS, S3
 
 This project allows you to deploy a Django project on AWS using Lambda, PostgreSQL, and S3.
 
