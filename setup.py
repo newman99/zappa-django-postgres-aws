@@ -188,6 +188,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 username, email, password
             )
         ])
+        click.echo('Running collectstatic for stage dev...')
         subprocess.run([
             'docker',
             'run',
