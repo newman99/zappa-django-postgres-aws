@@ -7,7 +7,7 @@ This project allows you to deploy a Django project on AWS using Lambda, PostgreS
 
 ### Prerequisites
 
-Install Docker.
+Install [Docker](https://www.docker.com/get-started).
 
 ```
 Give examples
@@ -21,10 +21,6 @@ Give examples
 
 `cd zappa-django-postgres-aws-master.zip`
 
-`cp env.example .env`
-
-Enter the values in the .env file.
-
 ## Deployment
 
 `python3 setup.py project_name`
@@ -35,7 +31,7 @@ Enter the values in the .env file.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Unlicense - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
