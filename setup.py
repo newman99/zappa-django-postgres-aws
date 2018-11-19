@@ -191,6 +191,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         subprocess.run([
             'docker',
             'run',
+            '-e',
+            'DJANGO_ENV=aws-dev',
             '-v',
             '{}/.aws:/root/.aws'.format(Path.home()),
             '-v',
