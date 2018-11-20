@@ -150,7 +150,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         with open('.env', 'a') as fp:
             fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
 
-        aws_lambda_host = deploy_zappa(project_name)
+        aws_lambda_host = deploy_zappa(project_name, client)
         click.echo(
             'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
         )
@@ -158,49 +158,44 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
 
-        update_zappa(project_name)
+        update_zappa(project_name, client)
 
-        subprocess.run([
-            'docker',
-            'run',
-            '-v',
-            '{}/.aws:/root/.aws'.format(Path.home()),
-            '-v',
-            '{}:/var/task'.format(Path.cwd()),
+        client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash',
-            '-c',
-            'source ve/bin/activate && zappa manage dev migrate'
-        ])
-        subprocess.run([
-            'docker',
-            'run',
-            '-v',
-            '{}/.aws:/root/.aws'.format(Path.home()),
-            '-v',
-            '{}:/var/task'.format(Path.cwd()),
+            '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"', # noqa
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
+            }
+        )
+        client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash',
-            '-c',
-            """source ve/bin/activate && zappa invoke --raw dev 'from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser("{}", "{}", "{}")'""".format( # noqa
+            """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{})"'""".format( # noqa
                 username, email, password
-            )
-        ])
+            ),
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
+            }
+        )
         click.echo('Running collectstatic for stage dev...')
-        subprocess.run([
-            'docker',
-            'run',
-            '-e',
-            'DJANGO_ENV=aws-dev',
-            '-v',
-            '{}/.aws:/root/.aws'.format(Path.home()),
-            '-v',
-            '{}:/var/task'.format(Path.cwd()),
+        client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash',
-            '-c',
-            """source /var/task/ve/bin/activate && python manage.py collectstatic --noinput""" # noqa
-        ])
+            '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
+            }
+        )
 
     click.echo('Django website is running at http://{}/dev/'.format(
         aws_lambda_host
@@ -435,54 +430,51 @@ def get_aws_rds_host(stack_name, session):
     return aws_rds_host
 
 
-def deploy_zappa(project_name):
+def deploy_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    subprocess.run([
-        'docker',
-        'run',
-        '-v',
-        '{}:/var/task'.format(Path.cwd()),
-        '-v',
-        '{}/.aws:/root/.aws'.format(Path.home()),
+    client.containers.run(
         '{}_web:latest'.format(project_name),
-        '/bin/bash',
-        '-c',
-        'source ve/bin/activate && zappa deploy dev'
-    ])
+        '/bin/bash -c "source ve/bin/activate && zappa deploy dev"',
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
 
-    return get_lambda_host(project_name)
+    return get_lambda_host(project_name, client)
 
 
-def update_zappa(project_name):
+def update_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    subprocess.run([
-        'docker',
-        'run',
-        '-v',
-        '{}:/var/task'.format(Path.cwd()),
-        '-v',
-        '{}/.aws:/root/.aws'.format(Path.home()),
+    client.containers.run(
         '{}_web:latest'.format(project_name),
-        '/bin/bash',
-        '-c',
-        'source ve/bin/activate && zappa update dev'
-    ])
+        '/bin/bash -c "source ve/bin/activate && zappa update dev"',
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
 
 
-def get_lambda_host(project_name):
+def get_lambda_host(project_name, client):
     """Get Lambda host."""
-    output = subprocess.check_output([
-        'docker',
-        'run',
-        '-v',
-        '{}:/var/task'.format(Path.cwd()),
-        '-v',
-        '{}/.aws:/root/.aws'.format(Path.home()),
+    output = client.containers.run(
         '{}_web:latest'.format(project_name),
-        '/bin/bash',
-        '-c',
-        'source ve/bin/activate && zappa status dev'
-    ])
+        '/bin/bash -c "source ve/bin/activate && zappa status dev"',
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
 
     for line in output.split(b'\n'):
         tokens = line.split(b': ')
