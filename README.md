@@ -1,6 +1,6 @@
 # Zappa - Django - AWS - Lambda, RDS, S3
 
-This project allows you to deploy a Django project on AWS using Lambda, PostgreSQL, and S3.
+This project allows you to deploy a Django project on AWS using Lambda, RDS (PostgreSQL), and S3.
 
 ## Getting Started
 
@@ -8,6 +8,10 @@ This project allows you to deploy a Django project on AWS using Lambda, PostgreS
 ### Prerequisites
 
 Install [Docker](https://www.docker.com/get-started).
+
+Install boto3, botocore, click, urllib, troposphere:
+
+`pip install boto3 botocore click urllib troposphere`
 
 ### Installing
 
@@ -27,7 +31,7 @@ Install [Docker](https://www.docker.com/get-started).
 
 ## License
 
-This project is licensed under the Unlicense - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under The Unlicense - see the [LICENSE.md](LICENSE.md) file for details
 
 ## Acknowledgments
 
