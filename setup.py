@@ -4,22 +4,23 @@ Create the Zappa settings file, create a new Django project and build
 the Docker images.
 
 """
-import subprocess
-import os
-import re
-import time
 import json
+import os
 import random
+import re
 import string
+import subprocess
+import time
+from pathlib import Path
+from urllib.parse import urlparse
+
 import boto3
 import botocore
 import click
-from pathlib import Path
-from urllib.parse import urlparse
-from troposphere import Template, GetAtt, Output
+import docker
+from troposphere import GetAtt, Output, Template
 from troposphere.rds import DBInstance
-from troposphere.s3 import Bucket, PublicRead, CorsConfiguration, CorsRules
-
+from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
 
 TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
 
@@ -65,34 +66,31 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     create_env_file(project_name, name, email, session)
 
+    client = docker.from_env()
+
     if build or buildall:
-        subprocess.run(['docker-compose', 'build'])
+        client.images.build(
+            path=str(Path.cwd()),
+            tag='{}_web:latest'.format(project_name)
+        )
 
     if virtual or buildall:
-        subprocess.run([
-            'docker',
-            'run',
-            '-ti',
-            '-v',
-            '{}:/var/task'.format(os.getcwd()),
+        client.containers.run(
             '{}_web:latest'.format(project_name),
-            'python',
-            '-m',
-            'virtualenv',
-            've'
-        ])
+            'python -m virtualenv ve',
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            }
+        )
 
     if requirements or buildall:
-        subprocess.run([
-            'docker',
-            'run',
-            '-v',
-            '{}:/var/task'.format(os.getcwd()),
+        client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash',
-            '-c',
-            'source ve/bin/activate && pip install -r requirements.txt'
-        ])
+            '/bin/bash -c "source ve/bin/activate && pip install -r requirements.txt"', # noqa
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            }
+        )
 
     aws_rds_host = get_aws_rds_host(stack_name, session)
 
@@ -105,19 +103,17 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 project_name))
         else:
             click.echo('STARTPROJECT')
-            subprocess.run([
-                'docker',
-                'run',
-                '-ti',
-                '-v',
-                '{}:/var/task'.format(os.getcwd()),
+            client.containers.run(
                 '{}_web:latest'.format(project_name),
-                '/var/task/ve/bin/django-admin',
-                'startproject',
-                project_name,
-                '.',
-                '--template={}'.format(TEMPLATE)
-            ])
+                've/bin/django-admin startproject {} . --template={}'.format(
+                    project_name,
+                    TEMPLATE
+                ),
+                volumes={
+                    Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                }
+            )
+
             click.echo('MIGRATE')
             subprocess.run([
                 'docker-compose',
@@ -131,6 +127,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
                 '/var/task/manage.py',
                 'migrate'
             ])
+
             click.echo('CREATESUPERUSER')
             subprocess.run([
                 'docker-compose',
@@ -230,6 +227,7 @@ def create_env_file(project_name, name, email, session):
     with open('.env', 'w') as fp:
         for e in env:
             fp.write('{}={}\n'.format(e, env[e]))
+    return env
 
 
 def create_aws(project_name):
