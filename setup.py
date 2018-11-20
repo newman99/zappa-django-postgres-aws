@@ -92,11 +92,6 @@ def main(project_name, name, username, email, password, aws, build, buildall,
             }
         )
 
-    aws_rds_host = get_aws_rds_host(stack_name, session)
-
-    with open('.env', 'a') as fp:
-        fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
-
     if startproject or buildall:
         if os.path.exists(project_name):
             click.echo('Error: a project named "{}" already exists.'.format(
@@ -150,10 +145,16 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     create_zappa_settings(project_name, session)
 
     if zappa or buildall:
+        aws_rds_host = get_aws_rds_host(stack_name, session)
+
+        with open('.env', 'a') as fp:
+            fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
+
         aws_lambda_host = deploy_zappa(project_name)
         click.echo(
             'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
         )
+
         with open('.env', 'a') as fp:
             fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
 
