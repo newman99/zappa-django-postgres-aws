@@ -174,9 +174,6 @@ def create_zappa_project(
         fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
 
     aws_lambda_host = deploy_zappa(project_name, client)
-    click.echo(
-        'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
-    )
 
     with open('.env', 'a') as fp:
         fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
@@ -196,10 +193,7 @@ def create_zappa_project(
     )
     client.containers.run(
         '{}_web:latest'.format(project_name),
-        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev \
-        "from django.contrib.auth import get_user_model; \
-        User = get_user_model(); \
-        User.objects.create_superuser('{}', '{}', '{})"'""".format(
+        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{})"'""".format( # noqa
             username, email, password
         ),
         volumes={
