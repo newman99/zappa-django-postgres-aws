@@ -193,7 +193,7 @@ def create_zappa_project(
     )
     client.containers.run(
         '{}_web:latest'.format(project_name),
-        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{})"'""".format( # noqa
+        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'""".format( # noqa
             username, email, password
         ),
         volumes={
