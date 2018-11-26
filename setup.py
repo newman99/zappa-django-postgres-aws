@@ -213,6 +213,7 @@ def create_zappa_project(
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
+        environment={'DJANGO_ENV': 'aws-dev'},
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             '{}/.aws'.format(Path.home()): {
@@ -453,7 +454,7 @@ def get_aws_rds_host(stack_name, session):
 
 def deploy_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    click.echo('Deploy Zappa...')
+    click.echo('Deploying Django project on AWS Lambda using Zappa...')
     try:
         client.containers.run(
             '{}_web:latest'.format(project_name),
@@ -474,7 +475,9 @@ def deploy_zappa(project_name, client):
 
 def update_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    click.echo('Update Zappa...')
+    click.echo(
+        'Updating Zappa deployment to add Lambda host to ALLOWED_HOSTS...'
+    )
     try:
         client.containers.run(
             '{}_web:latest'.format(project_name),
