@@ -76,7 +76,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         )
 
     if virtual or buildall:
-        click.echo('Creating virtual python environment...')
+        click.echo('Creating virtual Python environment...')
         client.containers.run(
             '{}_web:latest'.format(project_name),
             'python -m virtualenv ve',
@@ -105,7 +105,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     if zappa or buildall:
         aws_lambda_host = create_zappa_project(
-            project_name, stack_name, session, username, email, password
+            project_name, stack_name, session, client, username, email, password
         )
         click.echo('Django website is running at http://{}/dev/'.format(
             aws_lambda_host
