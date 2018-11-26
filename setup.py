@@ -191,19 +191,24 @@ def create_zappa_project(
             }
         }
     )
-    client.containers.run(
-        '{}_web:latest'.format(project_name),
-        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'""".format( # noqa
-            username, email, password
-        ),
-        volumes={
-            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-            '{}/.aws'.format(Path.home()): {
-                'bind': '/root/.aws',
-                'mode': 'ro'
+    click.echo('Create Django superuser {} for Zappa...'.format(username))
+    try:
+        client.containers.run(
+            '{}_web:latest'.format(project_name),
+            """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'""".format( # noqa
+                username, email, password
+            ),
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
             }
-        }
-    )
+        )
+    except docker.errors.ContainerError:
+        pass
+
     click.echo('Running collectstatic for stage dev...')
     client.containers.run(
         '{}_web:latest'.format(project_name),
@@ -448,6 +453,7 @@ def get_aws_rds_host(stack_name, session):
 
 def deploy_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
+    click.echo('Deploy Zappa...')
     try:
         client.containers.run(
             '{}_web:latest'.format(project_name),
@@ -461,13 +467,14 @@ def deploy_zappa(project_name, client):
             }
         )
     except docker.errors.ContainerError:
-        click.echo('Deploy Zappa...')
+        pass
 
     return get_lambda_host(project_name, client)
 
 
 def update_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
+    click.echo('Update Zappa...')
     try:
         client.containers.run(
             '{}_web:latest'.format(project_name),
@@ -481,7 +488,7 @@ def update_zappa(project_name, client):
             }
         )
     except docker.errors.ContainerError:
-        click.echo('Update Zappa...')
+        pass
 
 
 def get_lambda_host(project_name, client):
