@@ -93,115 +93,133 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         )
 
     if startproject or buildall:
-        if os.path.exists(project_name):
-            click.echo('Error: a project named "{}" already exists.'.format(
-                project_name))
-        else:
-            click.echo('STARTPROJECT')
-            client.containers.run(
-                '{}_web:latest'.format(project_name),
-                've/bin/django-admin startproject {} . --template={}'.format(
-                    project_name,
-                    TEMPLATE
-                ),
-                volumes={
-                    Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-                }
-            )
-
-            click.echo('MIGRATE')
-            subprocess.run([
-                'docker-compose',
-                'up',
-                '-d'
-            ])
-            subprocess.run([
-                'docker-compose',
-                'exec',
-                'web',
-                '/var/task/manage.py',
-                'migrate'
-            ])
-
-            click.echo('CREATESUPERUSER')
-            subprocess.run([
-                'docker-compose',
-                'exec',
-                'web',
-                '/bin/bash',
-                '-c',
-                '''/var/task/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
-                    username, email, password
-                )
-            ])
-            subprocess.run([
-                'docker-compose',
-                'down'
-            ])
+        start_project(project_name, client, username, email, password)
 
     if aws or buildall:
         create_aws(project_name)
 
-    create_zappa_settings(project_name, session)
+    create_zappa_settings(project_name, session, client)
 
     if zappa or buildall:
-        aws_rds_host = get_aws_rds_host(stack_name, session)
-
-        with open('.env', 'a') as fp:
-            fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
-
-        aws_lambda_host = deploy_zappa(project_name, client)
-        click.echo(
-            'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
+        aws_lambda_host = create_zappa_project(
+            project_name, stack_name, session, username, email, password
         )
+        click.echo('Django website is running at http://{}/dev/'.format(
+            aws_lambda_host
+        ))
 
-        with open('.env', 'a') as fp:
-            fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
+    exit(0)
 
-        update_zappa(project_name, client)
 
+def start_project(project_name, client, username, email, password):
+    """Start Django project."""
+    if os.path.exists(project_name):
+        click.echo('Error: a project named "{}" already exists.'.format(
+            project_name))
+    else:
+        click.echo('STARTPROJECT')
         client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"', # noqa
-            volumes={
-                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-                '{}/.aws'.format(Path.home()): {
-                    'bind': '/root/.aws',
-                    'mode': 'ro'
-                }
-            }
-        )
-        client.containers.run(
-            '{}_web:latest'.format(project_name),
-            """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{})"'""".format( # noqa
-                username, email, password
+            've/bin/django-admin startproject {} . --template={}'.format(
+                project_name,
+                TEMPLATE
             ),
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-                '{}/.aws'.format(Path.home()): {
-                    'bind': '/root/.aws',
-                    'mode': 'ro'
-                }
-            }
-        )
-        click.echo('Running collectstatic for stage dev...')
-        client.containers.run(
-            '{}_web:latest'.format(project_name),
-            '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
-            volumes={
-                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-                '{}/.aws'.format(Path.home()): {
-                    'bind': '/root/.aws',
-                    'mode': 'ro'
-                }
             }
         )
 
-    click.echo('Django website is running at http://{}/dev/'.format(
-        aws_lambda_host
-    ))
+        click.echo('MIGRATE')
+        subprocess.run([
+            'docker-compose',
+            'up',
+            '-d'
+        ])
+        subprocess.run([
+            'docker-compose',
+            'exec',
+            'web',
+            '/var/task/manage.py',
+            'migrate'
+        ])
 
-    exit(0)
+        click.echo('CREATESUPERUSER')
+        subprocess.run([
+            'docker-compose',
+            'exec',
+            'web',
+            '/bin/bash',
+            '-c',
+            '''/var/task/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
+                username, email, password
+            )
+        ])
+        subprocess.run([
+            'docker-compose',
+            'down'
+        ])
+
+
+def create_zappa_project(
+    project_name, stack_name, session, client, username, email, password
+):
+    """Create the zappa project."""
+    aws_rds_host = get_aws_rds_host(stack_name, session)
+
+    with open('.env', 'a') as fp:
+        fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
+
+    aws_lambda_host = deploy_zappa(project_name, client)
+    click.echo(
+        'This 502 error is expected - ALLOWED_HOSTS is not set yet.'
+    )
+
+    with open('.env', 'a') as fp:
+        fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
+
+    update_zappa(project_name, client)
+
+    client.containers.run(
+        '{}_web:latest'.format(project_name),
+        '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"', # noqa
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
+    client.containers.run(
+        '{}_web:latest'.format(project_name),
+        """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev \
+        "from django.contrib.auth import get_user_model; \
+        User = get_user_model(); \
+        User.objects.create_superuser('{}', '{}', '{})"'""".format(
+            username, email, password
+        ),
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
+    click.echo('Running collectstatic for stage dev...')
+    client.containers.run(
+        '{}_web:latest'.format(project_name),
+        '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
+        volumes={
+            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+            '{}/.aws'.format(Path.home()): {
+                'bind': '/root/.aws',
+                'mode': 'ro'
+            }
+        }
+    )
+
+    return(aws_lambda_host)
 
 
 def create_env_file(project_name, name, email, session):
