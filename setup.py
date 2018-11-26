@@ -454,17 +454,20 @@ def get_aws_rds_host(stack_name, session):
 
 def deploy_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    client.containers.run(
-        '{}_web:latest'.format(project_name),
-        '/bin/bash -c "source ve/bin/activate && zappa deploy dev"',
-        volumes={
-            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-            '{}/.aws'.format(Path.home()): {
-                'bind': '/root/.aws',
-                'mode': 'ro'
+    try:
+        client.containers.run(
+            '{}_web:latest'.format(project_name),
+            '/bin/bash -c "source ve/bin/activate && zappa deploy dev"',
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
             }
-        }
-    )
+        )
+    except docker.errors.ContainerError:
+        click.echo('Deploy Zappa...')
 
     return get_lambda_host(project_name, client)
 
@@ -484,7 +487,7 @@ def update_zappa(project_name, client):
             }
         )
     except docker.errors.ContainerError:
-        click.echo('502')
+        click.echo('Update Zappa...')
 
 
 def get_lambda_host(project_name, client):
