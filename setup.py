@@ -69,12 +69,14 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     client = docker.from_env()
 
     if build or buildall:
+        click.echo('Building Docker image...')
         client.images.build(
             path=str(Path.cwd()),
             tag='{}_web:latest'.format(project_name)
         )
 
     if virtual or buildall:
+        click.echo('Creating virtual python environment...')
         client.containers.run(
             '{}_web:latest'.format(project_name),
             'python -m virtualenv ve',
@@ -84,6 +86,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         )
 
     if requirements or buildall:
+        click.echo('Installing Python requirements...')
         client.containers.run(
             '{}_web:latest'.format(project_name),
             '/bin/bash -c "source ve/bin/activate && pip install -r requirements.txt"', # noqa
@@ -113,7 +116,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
 def start_project(project_name, client, username, email, password):
     """Start Django project."""
-    if os.path.exists(project_name):
+    if Path(project_name).exists():
         click.echo('Error: a project named "{}" already exists.'.format(
             project_name))
     else:
@@ -314,7 +317,7 @@ def create_boto_session():
     return session
 
 
-def create_zappa_settings(project_name, session):
+def create_zappa_settings(project_name, session, client):
     """Create the zappa_settings.json file."""
     client = session.client('ec2')
 
