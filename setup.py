@@ -193,11 +193,14 @@ def create_zappa_project(
     )
     click.echo('Create Django superuser {} for Zappa...'.format(username))
     try:
+        django_command = '''from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser(\\"{}\\", \\"{}\\", \\"{}\\")'''.format( # noqa
+                username, email, password
+        )
+        bash_command = 'source ve/bin/activate && zappa invoke --raw dev "{}"'.format(django_command) # noqa
+        zappa_command = "/bin/bash -c '{}'".format(bash_command)
         client.containers.run(
             '{}_web:latest'.format(project_name),
-            """/bin/bash -c 'source ve/bin/activate && zappa invoke --raw dev "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'""".format( # noqa
-                username, email, password
-            ),
+            zappa_command,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
                 '{}/.aws'.format(Path.home()): {
