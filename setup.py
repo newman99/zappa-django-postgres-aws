@@ -105,7 +105,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     if zappa or buildall:
         aws_lambda_host = create_zappa_project(
-            project_name, stack_name, session, client, username, email, password
+            project_name, stack_name, session,
+            client, username, email, password
         )
         click.echo('Django website is running at http://{}/dev/'.format(
             aws_lambda_host
@@ -470,17 +471,20 @@ def deploy_zappa(project_name, client):
 
 def update_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    client.containers.run(
-        '{}_web:latest'.format(project_name),
-        '/bin/bash -c "source ve/bin/activate && zappa update dev"',
-        volumes={
-            Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
-            '{}/.aws'.format(Path.home()): {
-                'bind': '/root/.aws',
-                'mode': 'ro'
+    try:
+        client.containers.run(
+            '{}_web:latest'.format(project_name),
+            '/bin/bash -c "source ve/bin/activate && zappa update dev"',
+            volumes={
+                Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
+                '{}/.aws'.format(Path.home()): {
+                    'bind': '/root/.aws',
+                    'mode': 'ro'
+                }
             }
-        }
-    )
+        )
+    except docker.errors.ContainerError:
+        click.echo('502')
 
 
 def get_lambda_host(project_name, client):
