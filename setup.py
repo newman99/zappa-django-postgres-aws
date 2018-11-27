@@ -58,6 +58,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     Build and deploy a Django app in Docker for local development and
     on AWS Lambda using Zappa.
     """
+    start_time = time.time()
     os.environ['PROJECT_NAME'] = project_name
 
     session = create_boto_session()
@@ -111,6 +112,10 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         click.echo('Django website is running at http://{}/dev/'.format(
             aws_lambda_host
         ))
+
+    end_time = time.time()
+
+    print('Elapsed time = {}'.format(end_time - start_time))
 
     exit(0)
 
@@ -183,6 +188,7 @@ def create_zappa_project(
 
     update_zappa(project_name, client)
 
+    click.echo('Run initial Django migration for Zappa deployment...')
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"',
@@ -215,7 +221,7 @@ def create_zappa_project(
     except docker.errors.ContainerError:
         pass
 
-    click.echo('Running collectstatic for stage dev...')
+    click.echo('Running collectstatic for Zappa deployment...')
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
