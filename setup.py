@@ -58,7 +58,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     Build and deploy a Django app in Docker for local development and
     on AWS Lambda using Zappa.
     """
-    start_time = time.time()
+    start_time = time.monotonic()
     os.environ['PROJECT_NAME'] = project_name
 
     session = create_boto_session()
@@ -113,9 +113,11 @@ def main(project_name, name, username, email, password, aws, build, buildall,
             aws_lambda_host
         ))
 
-    end_time = time.time()
+    end_time = time.monotonic()
 
-    print('Elapsed time = {}'.format(end_time - start_time))
+    click.echo('Elapsed time: {}.'.format(
+        time.strftime('%M:%S', time.gmtime(end_time - start_time))
+    ))
 
     exit(0)
 
