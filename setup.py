@@ -22,7 +22,7 @@ from troposphere import GetAtt, Output, Template
 from troposphere.rds import DBInstance
 from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
 
-TEMPLATE = 'https://gitlab.com/newman99/django-project-template/-/archive/master/django-project-template-master.zip'  # noqa
+TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-/archive/master/django-split-settings-project-template-master.zip'  # noqa
 
 
 @click.command()
@@ -90,7 +90,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         click.echo('Installing Python requirements...')
         client.containers.run(
             '{}_web:latest'.format(project_name),
-            '/bin/bash -c "source ve/bin/activate && pip install -r requirements.txt"', # noqa
+            '/bin/bash -c \
+            "source ve/bin/activate && pip install -r requirements.txt"',
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
@@ -115,7 +116,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     end_time = time.monotonic()
 
-    click.echo('Elapsed time: {}.'.format(
+    click.echo('Elapsed time: {}'.format(
         time.strftime('%M:%S', time.gmtime(end_time - start_time))
     ))
 
@@ -207,7 +208,8 @@ def create_zappa_project(
         django_command = '''from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser(\\"{}\\", \\"{}\\", \\"{}\\")'''.format( # noqa
                 username, email, password
         )
-        bash_command = 'source ve/bin/activate && zappa invoke --raw dev "{}"'.format(django_command) # noqa
+        bash_command = 'source ve/bin/activate \
+        && zappa invoke --raw dev "{}"'.format(django_command)
         zappa_command = "/bin/bash -c '{}'".format(bash_command)
         client.containers.run(
             '{}_web:latest'.format(project_name),
@@ -226,7 +228,8 @@ def create_zappa_project(
     click.echo('Running collectstatic for Zappa deployment...')
     client.containers.run(
         '{}_web:latest'.format(project_name),
-        '/bin/bash -c "source ve/bin/activate && python manage.py collectstatic --noinput"', # noqa
+        '/bin/bash -c "source ve/bin/activate \
+        && python manage.py collectstatic --noinput"',
         environment={'DJANGO_ENV': 'aws-dev'},
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
