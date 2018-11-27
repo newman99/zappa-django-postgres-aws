@@ -121,7 +121,7 @@ def start_project(project_name, client, username, email, password):
         click.echo('Error: a project named "{}" already exists.'.format(
             project_name))
     else:
-        click.echo('STARTPROJECT')
+        click.echo('Run Django startproject...')
         client.containers.run(
             '{}_web:latest'.format(project_name),
             've/bin/django-admin startproject {} . --template={}'.format(
@@ -133,7 +133,7 @@ def start_project(project_name, client, username, email, password):
             }
         )
 
-        click.echo('MIGRATE')
+        click.echo('Run initial Django migration...')
         subprocess.run([
             'docker-compose',
             'up',
@@ -147,15 +147,18 @@ def start_project(project_name, client, username, email, password):
             'migrate'
         ])
 
-        click.echo('CREATESUPERUSER')
+        click.echo('Run Django createsuperuser in Docker container...')
         subprocess.run([
             'docker-compose',
             'exec',
             'web',
             '/bin/bash',
             '-c',
-            '''/var/task/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('{}', '{}', '{}')"'''.format(  # noqa
-                username, email, password
+            '''/var/task/manage.py shell -c \
+                "from django.contrib.auth import get_user_model; \
+                User = get_user_model(); \
+                User.objects.create_superuser('{}', '{}', '{}')"'''.format(
+                    username, email, password
             )
         ])
         subprocess.run([
@@ -182,7 +185,7 @@ def create_zappa_project(
 
     client.containers.run(
         '{}_web:latest'.format(project_name),
-        '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"', # noqa
+        '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"',
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             '{}/.aws'.format(Path.home()): {
