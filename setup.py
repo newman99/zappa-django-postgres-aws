@@ -98,7 +98,8 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         )
 
     if startproject or buildall:
-        start_project(project_name, client, username, email, password)
+        start_project(project_name, client, username,
+                      email, password, template)
 
     if aws or buildall:
         create_aws(project_name)
@@ -123,7 +124,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     exit(0)
 
 
-def start_project(project_name, client, username, email, password):
+def start_project(project_name, client, username, email, password, template):
     """Start Django project."""
     if Path(project_name).exists():
         click.echo('Error: a project named "{}" already exists.'.format(
@@ -134,7 +135,7 @@ def start_project(project_name, client, username, email, password):
             '{}_web:latest'.format(project_name),
             've/bin/django-admin startproject {} . --template={}'.format(
                 project_name,
-                TEMPLATE
+                template
             ),
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
@@ -205,7 +206,9 @@ def create_zappa_project(
     )
     click.echo('Create Django superuser {} for Zappa...'.format(username))
     try:
-        django_command = '''from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser(\\"{}\\", \\"{}\\", \\"{}\\")'''.format( # noqa
+        django_command = '''from django.contrib.auth import get_user_model; \
+        User = get_user_model(); \
+        User.objects.create_superuser(\\"{}\\", \\"{}\\", \\"{}\\")'''.format(
                 username, email, password
         )
         bash_command = 'source ve/bin/activate \
