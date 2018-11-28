@@ -42,7 +42,8 @@ Install [Docker](https://www.docker.com/get-started) and [Docker Compose](https:
 Install boto3, botocore, click, urllib, and troposphere using pip:
 
 ```bash
-pip install boto3 botocore click urllib troposphere```
+pip install boto3 botocore click urllib troposphere
+```
 
 Install [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) (optional).
 
@@ -51,7 +52,8 @@ Install [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) (op
 Download this project:
 
 ```bash
-wget https://gitlab.com/newman99/zappa-django-postgres-aws/-/archive/master/zappa-django-postgres-aws-master.zip```
+wget https://gitlab.com/newman99/zappa-django-postgres-aws/-/archive/master/zappa-django-postgres-aws-master.zip
+```
 
 Unzip to the directory of your choice:
 
