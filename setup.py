@@ -5,7 +5,6 @@ the Docker images.
 
 """
 import json
-import os
 import random
 import re
 import string
@@ -59,7 +58,6 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     on AWS Lambda using Zappa.
     """
     start_time = time.monotonic()
-    # os.environ['PROJECT_NAME'] = project_name
 
     session = create_boto_session()
 
