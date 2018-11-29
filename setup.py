@@ -59,7 +59,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     on AWS Lambda using Zappa.
     """
     start_time = time.monotonic()
-    os.environ['PROJECT_NAME'] = project_name
+    # os.environ['PROJECT_NAME'] = project_name
 
     session = create_boto_session()
 
