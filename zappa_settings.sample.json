@@ -1,26 +1,26 @@
 {
     "dev": {
-        "aws_region": "AWS_REGION",
-        "django_settings": "PROJECT_NAME.PROJECT_NAME.settings",
-        "profile_name": "default",
+        "django_settings": "PROJECT_NAME.settings",
+        "environment_variables": {
+            "DJANGO_ENV": "aws-dev"
+        },
+        "manage_roles": false,
+        "profile-region": "us-east-1",
+        "profile_name": "AWS_PROFILE_NAME",
         "project_name": "PROJECT_NAME",
+        "role_name": "Zappa",
         "runtime": "python3.6",
-        "s3_bucket": "S3_BUCKET"
+        "s3_bucket": "S3_BUCKET",
         "timeout_seconds": 300,
         "use_precompiled_packages": true,
-        "environment_variables": {
-            "DJANGO_ENV": "development"
+        "vpc_config": {
+            "SecurityGroupIds": [
+                "SECURITY_GROUP_ID"
+            ],
+            "SubnetIds": [
+                "SUBNET_ID_1",
+                "SUBNET_ID_2"
+            ]
         }
-    },
-    "vpc_config": {
-        "SubnetIds": [
-          "SUBNET_ID"
-        ],
-        "SecurityGroupIds": [
-          "SECURITY_GROUP_ID"
-        ]
-
     }
 }
-
-
