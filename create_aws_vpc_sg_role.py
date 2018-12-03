@@ -1,4 +1,5 @@
 """AWS Create Role Test."""
+import sys
 import boto3
 from troposphere import Template, Ref, Tags, ec2
 from troposphere.iam import Policy as IAM_Policy
@@ -127,7 +128,7 @@ mySecurityGroupRule = t.add_resource(
     )
 )
 
-session = boto3.Session(profile_name="newman")
+session = boto3.Session(profile_name=sys.argv[1])
 cfn = session.client('cloudformation')
 template_json = t.to_json(indent=4)
 cfn.validate_template(TemplateBody=template_json)
