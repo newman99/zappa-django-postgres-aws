@@ -23,7 +23,8 @@ from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
 from troposphere.iam import Policy as IAM_Policy
 from troposphere.iam import Role as IAM_Role
 from troposphere.iam import InstanceProfile as IAM_InstanceProfile
-from awacs.aws import Action, Allow, AssumeRole, Policy, Principal, Statement
+from awacs.aws import Action, Allow, Policy, Principal, Statement
+from awacs.sts import AssumeRole
 
 TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-/archive/master/django-split-settings-project-template-master.zip'  # noqa
 
@@ -547,7 +548,7 @@ def create_role(project_name, session):
     """Create role."""
     t = Template()
 
-    t.add_description("AWS Role, VPC, Security Group, and Subnet.")
+    t.add_description("AWS Role, VPC, Security Group, and Subnet for Zappa.")
 
     policy = IAM_Policy(
         PolicyName="{}-Policy".format(project_name),
@@ -594,8 +595,8 @@ def create_role(project_name, session):
     )
 
     role = t.add_resource(IAM_Role(
-        'Role-{}'.format(project_name),
-        RoleName='Role-{}'.format(project_name),
+        'Zappa{}'.format(project_name),
+        RoleName='Zappa{}'.format(project_name),
         AssumeRolePolicyDocument=Policy(
             Statement=[
                 Statement(
@@ -618,14 +619,17 @@ def create_role(project_name, session):
 
     myVpc = t.add_resource(
         ec2.VPC(
-            'VPC-{}'.format(project_name),
+            'VPC{}'.format(project_name),
             CidrBlock='172.31.0.0/16'
+        ),
+        Tags=Tags(
+            Name='Zappa{}'.format(project_name),
         )
     )
 
     t.add_resource(
         ec2.Subnet(
-            'Subnet1-{}'.format(project_name),
+            'Subnet1{}'.format(project_name),
             CidrBlock='172.31.0.0/20',
             AvailabilityZone='us-east-1a',
             VpcId=Ref(myVpc)
@@ -634,7 +638,7 @@ def create_role(project_name, session):
 
     t.add_resource(
         ec2.Subnet(
-            'Subnet2-{}'.format(project_name),
+            'Subnet2{}'.format(project_name),
             CidrBlock='172.31.16.0/20',
             AvailabilityZone='us-east-1b',
             VpcId=Ref(myVpc)
@@ -643,23 +647,23 @@ def create_role(project_name, session):
 
     t.add_resource(
         ec2.SecurityGroup(
-            'SG-{}'.format(project_name),
+            'Zappa{}'.format(project_name),
             GroupDescription='postgres traffic allowed',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='SG-{}'.format(project_name),
+                Name='Zappa{}'.format(project_name),
             )
         )
     )
     t.add_resource(
         ec2.SecurityGroupIngress(
-            "mySecurityGroupIngress",
-            GroupId=Ref('SG-{}'.format(project_name),),
+            "{}GroupIngress".format(project_name),
+            GroupId=Ref('Zappa{}'.format(project_name),),
             IpProtocol='tcp',
             FromPort='5432',
             ToPort='5432',
-            SourceSecurityGroupId=Ref('SG-{}'.format(project_name),),
-            DependsOn='SG-{}'.format(project_name),
+            SourceSecurityGroupId=Ref('Zappa{}'.format(project_name),),
+            DependsOn='Zappa{}'.format(project_name),
         )
     )
 
@@ -670,7 +674,7 @@ def create_role(project_name, session):
     print(template_json)
 
     stack = {
-        'StackName': '{}-Role-Stack'.format(project_name),
+        'StackName': 'Zappa-{}-Role-VPC-SG'.format(project_name),
         'TemplateBody': template_json,
         'Capabilities': ['CAPABILITY_NAMED_IAM']
     }

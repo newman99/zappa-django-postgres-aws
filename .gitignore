@@ -5,5 +5,5 @@ venv/*
 .env*
 .coverage
 manage.py
-postgres/*
+postgresql/*
 zappa_settings.json
