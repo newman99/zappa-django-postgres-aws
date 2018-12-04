@@ -14,6 +14,8 @@ from awacs.sts import AssumeRole
 
 t = Template()
 
+t.add_description("AWS Role, VPC, Security Group, and Subnet.")
+
 policy = IAM_Policy(
     PolicyName="ZappaPolicyTest1",
     PolicyDocument=Policy(
