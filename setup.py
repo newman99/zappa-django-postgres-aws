@@ -17,9 +17,13 @@ import boto3
 import botocore
 import click
 import docker
-from troposphere import GetAtt, Output, Template
+from troposphere import ec2, GetAtt, Output, Ref, Tags, Template
 from troposphere.rds import DBInstance
 from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
+from troposphere.iam import Policy as IAM_Policy
+from troposphere.iam import Role as IAM_Role
+from troposphere.iam import InstanceProfile as IAM_InstanceProfile
+from awacs.aws import Action, Allow, AssumeRole, Policy, Principal, Statement
 
 TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-/archive/master/django-split-settings-project-template-master.zip'  # noqa
 
@@ -60,6 +64,10 @@ def main(project_name, name, username, email, password, aws, build, buildall,
     start_time = time.monotonic()
 
     session = create_boto_session()
+
+    create_role(project_name, session)
+
+    exit(0)
 
     stack_name = create_stack(project_name, session)
 
@@ -533,6 +541,141 @@ def get_lambda_host(project_name, client):
                 tokens[1].decode('utf-8').replace(' ', '')
             ).netloc
             return aws_lambda_host
+
+
+def create_role(project_name, session):
+    """Create role."""
+    t = Template()
+
+    t.add_description("AWS Role, VPC, Security Group, and Subnet.")
+
+    policy = IAM_Policy(
+        PolicyName="{}-Policy".format(project_name),
+        PolicyDocument=Policy(
+            Statement=[
+                Statement(
+                    Effect="Allow",
+                    Action=[
+                        Action('s3', '*')
+                    ],
+                    Resource=['arn:aws:s3:::*']
+                ),
+                Statement(
+                    Effect="Allow",
+                    Action=[
+                        Action('logs', '*')
+                    ],
+                    Resource=['arn:aws:logs:*:*:*']
+                ),
+                Statement(
+                    Effect="Allow",
+                    Action=[
+                        Action('ec2', 'AttachNetworkInterface'),
+                        Action('ec2', 'CreateNetworkInterface'),
+                        Action('ec2', 'DeleteNetworkInterface'),
+                        Action('ec2', 'DescribeInstances'),
+                        Action('ec2', 'DescribeNetworkInterfaces'),
+                        Action('ec2', 'DetachNetworkInterface'),
+                        Action('ec2', 'ModifyNetworkInterfaceAttribute'),
+                        Action('ec2', 'ResetNetworkInterfaceAttribute'),
+                    ],
+                    Resource=['*']
+                ),
+                Statement(
+                    Effect="Allow",
+                    Action=[
+                        Action('xray', 'PutTraceSegments'),
+                        Action('xray', 'PutTelemetryRecords'),
+                    ],
+                    Resource=['*']
+                ),
+            ]
+        )
+    )
+
+    role = t.add_resource(IAM_Role(
+        'Role-{}'.format(project_name),
+        RoleName='Role-{}'.format(project_name),
+        AssumeRolePolicyDocument=Policy(
+            Statement=[
+                Statement(
+                    Effect=Allow,
+                    Action=[AssumeRole],
+                    Principal=Principal("Service", [
+                        "apigateway.amazonaws.com",
+                        "events.amazonaws.com",
+                        "lambda.amazonaws.com"
+                    ])
+                )
+            ]
+        ),
+        Policies=[policy]
+    ))
+
+    t.add_resource(IAM_InstanceProfile(
+        "InstanceProfile", Roles=[Ref(role)]
+    ))
+
+    myVpc = t.add_resource(
+        ec2.VPC(
+            'VPC-{}'.format(project_name),
+            CidrBlock='172.31.0.0/16'
+        )
+    )
+
+    t.add_resource(
+        ec2.Subnet(
+            'Subnet1-{}'.format(project_name),
+            CidrBlock='172.31.0.0/20',
+            AvailabilityZone='us-east-1a',
+            VpcId=Ref(myVpc)
+        )
+    )
+
+    t.add_resource(
+        ec2.Subnet(
+            'Subnet2-{}'.format(project_name),
+            CidrBlock='172.31.16.0/20',
+            AvailabilityZone='us-east-1b',
+            VpcId=Ref(myVpc)
+        )
+    )
+
+    t.add_resource(
+        ec2.SecurityGroup(
+            'SG-{}'.format(project_name),
+            GroupDescription='postgres traffic allowed',
+            VpcId=Ref(myVpc),
+            Tags=Tags(
+                Name='SG-{}'.format(project_name),
+            )
+        )
+    )
+    t.add_resource(
+        ec2.SecurityGroupIngress(
+            "mySecurityGroupIngress",
+            GroupId=Ref('SG-{}'.format(project_name),),
+            IpProtocol='tcp',
+            FromPort='5432',
+            ToPort='5432',
+            SourceSecurityGroupId=Ref('SG-{}'.format(project_name),),
+            DependsOn='SG-{}'.format(project_name),
+        )
+    )
+
+    cfn = session.client('cloudformation')
+    template_json = t.to_json(indent=4)
+    cfn.validate_template(TemplateBody=template_json)
+
+    print(template_json)
+
+    stack = {
+        'StackName': '{}-Role-Stack'.format(project_name),
+        'TemplateBody': template_json,
+        'Capabilities': ['CAPABILITY_NAMED_IAM']
+    }
+
+    cfn.create_stack(**stack)
 
 
 if __name__ == '__main__':
