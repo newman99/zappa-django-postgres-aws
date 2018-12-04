@@ -31,8 +31,6 @@ TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-
 
 @click.command()
 @click.argument('project_name')
-@click.option('-a', '--aws', is_flag=True, show_default=True,
-              help='Create AWS resources.')
 @click.option('-B', '--buildall', is_flag=True, show_default=True,
               help='Build all')
 @click.option('-b', '--build', is_flag=True, show_default=True,
@@ -66,9 +64,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     session = create_boto_session()
 
-    create_role(project_name, session)
-
-    exit(0)
+    role_stack_name = create_role(project_name, session)
 
     stack_name = create_stack(project_name, session)
 
@@ -108,10 +104,7 @@ def main(project_name, name, username, email, password, aws, build, buildall,
         start_project(project_name, client, username,
                       email, password, template)
 
-    if aws or buildall:
-        create_aws(project_name)
-
-    create_zappa_settings(project_name, session, client)
+    create_zappa_settings(project_name, role_stack_name, session, client)
 
     if zappa or buildall:
         aws_lambda_host = create_zappa_project(
@@ -275,39 +268,6 @@ def create_env_file(project_name, name, email, session):
     return env
 
 
-def create_aws(project_name):
-    """Create the AWS resources."""
-    env = {'PROJECT_NAME': project_name}
-
-    client = boto3.client('ec2')
-
-    try:
-        response = client.create_security_group(
-            GroupName=project_name,
-            Description=project_name
-        )
-        env['SecurityGroupIds'] = [response['GroupId']]
-    except botocore.exceptions.ClientError:
-        response = client.describe_security_groups(
-            GroupNames=(project_name,)
-        )
-        env['SecurityGroupIds'] = [response['SecurityGroups'][0]['GroupId']]
-
-    try:
-        response = client.authorize_security_group_ingress(
-            GroupId=env['SecurityGroupIds'][0],
-            IpProtocol='tcp',
-            FromPort=443,
-            ToPort=443,
-            CidrIp='0.0.0.0/0'
-        )
-    except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'InvalidPermission.Duplicate':
-            pass
-        else:
-            click.echo(e)
-
-
 def create_boto_session():
     """Create boto session."""
     session = botocore.session.Session()
@@ -345,35 +305,9 @@ def create_boto_session():
     return session
 
 
-def create_zappa_settings(project_name, session, client):
+def create_zappa_settings(project_name, role_stack_name, session, client):
     """Create the zappa_settings.json file."""
-    client = session.client('ec2')
-
-    security_groups = client.describe_security_groups(
-        Filters=[{
-            'Name': 'description', 'Values': ['default VPC security group', ]
-        }]
-    )
-
-    group_ids = []
-    for sg in security_groups['SecurityGroups']:
-        group_ids.append(sg['GroupId'])
-
-    vpc = client.describe_vpcs()
-
-    subnets = client.describe_subnets(
-        Filters=[
-            {'Name': 'vpc-id', 'Values': [vpc['Vpcs'][0]['VpcId'], ]},
-            {
-                'Name': 'availability-zone',
-                'Values': ['us-east-1a', 'us-east-1b']
-            }
-        ]
-    )
-
-    subnet_ids = []
-    for sn in subnets['Subnets']:
-        subnet_ids.append(sn['SubnetId'])
+    role_info = get_role_name(role_stack_name, session)
 
     zappa = {
         'dev': {
@@ -391,10 +325,10 @@ def create_zappa_settings(project_name, session, client):
                 'DJANGO_ENV': 'aws-dev'
             },
             "manage_roles": False,
-            "role_name": "Zappa",
+            "role_name": role_info['role_name'],
             'vpc_config': {
-                'SubnetIds': subnet_ids,
-                'SecurityGroupIds': group_ids
+                'SubnetIds': role_info['subnet_ids'],
+                'SecurityGroupIds': role_info['security_group']
             }
         }
     }
@@ -477,6 +411,42 @@ def get_aws_rds_host(stack_name, session):
     aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
 
     return aws_rds_host
+
+
+def get_role_name(stack_name, session):
+    """Get Role name."""
+    client = session.client('cloudformation')
+    stack_status = None
+    while stack_status != 'CREATE_COMPLETE':
+        click.echo("Waiting for stack creation...")
+        time.sleep(3)
+        response = client.describe_stacks(
+            StackName=stack_name
+        )
+        stack_status = response['Stacks'][0]['StackStatus']
+    outputs = response['Stacks'][0]['Outputs']
+
+    role_name = ''
+    security_group = ''
+    subnet_ids = []
+
+    for output in outputs:
+        print(output)
+        if output['OutputKey'] == 'RoleName':
+            role_name = output['OutputValue']
+            print(output['OutputValue'])
+        if output['OutputKey'] == 'SecurityGroupId':
+            security_group = output['OutputValue']
+            print(output['OutputValue'])
+        if output['Description'] == 'SubnetId':
+            subnet_ids.append(output['OutputValue'])
+            print(output['OutputValue'])
+
+    return {
+        'role_name': role_name,
+        'security_group': security_group,
+        'subnet_ids': subnet_ids
+    }
 
 
 def deploy_zappa(project_name, client):
@@ -595,8 +565,8 @@ def create_role(project_name, session):
     )
 
     role = t.add_resource(IAM_Role(
-        'Zappa{}'.format(project_name),
-        RoleName='Zappa{}'.format(project_name),
+        'ZappaRole{}'.format(project_name),
+        RoleName='ZappaRole{}'.format(project_name),
         AssumeRolePolicyDocument=Policy(
             Statement=[
                 Statement(
@@ -627,7 +597,7 @@ def create_role(project_name, session):
         )
     )
 
-    t.add_resource(
+    subnet_1 = t.add_resource(
         ec2.Subnet(
             'Subnet1{}'.format(project_name),
             CidrBlock='172.31.0.0/20',
@@ -636,7 +606,7 @@ def create_role(project_name, session):
         )
     )
 
-    t.add_resource(
+    subnet_2 = t.add_resource(
         ec2.Subnet(
             'Subnet2{}'.format(project_name),
             CidrBlock='172.31.16.0/20',
@@ -645,7 +615,7 @@ def create_role(project_name, session):
         )
     )
 
-    t.add_resource(
+    security_group = t.add_resource(
         ec2.SecurityGroup(
             'ZappaSG{}'.format(project_name),
             GroupDescription='postgres traffic allowed',
@@ -667,19 +637,42 @@ def create_role(project_name, session):
         )
     )
 
-    cfn = session.client('cloudformation')
-    template_json = t.to_json(indent=4)
-    cfn.validate_template(TemplateBody=template_json)
+    t.add_output(Output(
+        'RoleName',
+        Description='Role Name',
+        Value=GetAtt(role, "RoleName")
+    ))
 
-    print(template_json)
+    t.add_output(Output(
+        'SecurityGroupId',
+        Description='Security Group Id',
+        Value=GetAtt(security_group, "GroupId")
+    ))
 
-    stack = {
-        'StackName': 'Zappa-{}-Role-VPC-SG'.format(project_name),
-        'TemplateBody': template_json,
-        'Capabilities': ['CAPABILITY_NAMED_IAM']
-    }
+    t.add_output(Output(
+        'SubnetId1',
+        Description='SubnetId',
+        Value=Ref(subnet_1)
+    ))
 
-    cfn.create_stack(**stack)
+    t.add_output(Output(
+        'SubnetId2',
+        Description='SubnetId',
+        Value=Ref(subnet_2)
+    ))
+
+    print(t.to_json(indent=4))
+
+    stack_name = 'Zappa-Role-VPC-SG-{}'.format(project_name)
+
+    resource = session.resource('cloudformation')
+    resource.create_stack(
+        StackName=stack_name,
+        TemplateBody=t.to_json(),
+        Capabilities=['CAPABILITY_NAMED_IAM']
+    )
+
+    return stack_name
 
 
 if __name__ == '__main__':
