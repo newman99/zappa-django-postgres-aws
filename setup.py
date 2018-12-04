@@ -620,10 +620,10 @@ def create_role(project_name, session):
     myVpc = t.add_resource(
         ec2.VPC(
             'VPC{}'.format(project_name),
-            CidrBlock='172.31.0.0/16'
-        ),
-        Tags=Tags(
-            Name='Zappa{}'.format(project_name),
+            CidrBlock='172.31.0.0/16',
+            Tags=Tags(
+                Name='ZappaVPC{}'.format(project_name),
+            )
         )
     )
 
@@ -651,19 +651,19 @@ def create_role(project_name, session):
             GroupDescription='postgres traffic allowed',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='Zappa{}'.format(project_name),
+                Name='ZappaSG{}'.format(project_name),
             )
         )
     )
     t.add_resource(
         ec2.SecurityGroupIngress(
             "{}GroupIngress".format(project_name),
-            GroupId=Ref('Zappa{}'.format(project_name),),
+            GroupId=Ref('ZappaSG{}'.format(project_name),),
             IpProtocol='tcp',
             FromPort='5432',
             ToPort='5432',
-            SourceSecurityGroupId=Ref('Zappa{}'.format(project_name),),
-            DependsOn='Zappa{}'.format(project_name),
+            SourceSecurityGroupId=Ref('ZappaSG{}'.format(project_name),),
+            DependsOn='ZappaSG{}'.format(project_name),
         )
     )
 
