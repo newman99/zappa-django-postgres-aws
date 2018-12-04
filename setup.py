@@ -647,7 +647,7 @@ def create_role(project_name, session):
 
     t.add_resource(
         ec2.SecurityGroup(
-            'Zappa{}'.format(project_name),
+            'ZappaSG{}'.format(project_name),
             GroupDescription='postgres traffic allowed',
             VpcId=Ref(myVpc),
             Tags=Tags(
