@@ -18,7 +18,7 @@ import botocore
 import click
 import docker
 from troposphere import ec2, GetAtt, Output, Ref, Tags, Template
-from troposphere.rds import DBInstance
+from troposphere.rds import DBInstance, DBSubnetGroup
 from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
 from troposphere.iam import Policy as IAM_Policy
 from troposphere.iam import Role as IAM_Role
@@ -53,7 +53,7 @@ TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-
 @click.option('--password', prompt='Enter your Django admin password',
               hide_input=True, confirmation_prompt=True,
               help="Django admin password")
-def main(project_name, name, username, email, password, aws, build, buildall,
+def main(project_name, name, username, email, password, build, buildall,
          requirements, startproject, virtual, zappa, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
@@ -329,7 +329,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
             "manage_roles": False,
             "role_name": role_info['role_name'],
             'vpc_config': {
-                'SubnetIds': role_info['subnet_ids'],
+                'SubnetIds': (role_info['subnet_ids']),
                 'SecurityGroupIds': role_info['security_group']
             }
         }
@@ -352,6 +352,12 @@ def create_stack(project_name, role_info, session):
 
     t.add_description("RDS PostgreSQL DB instance for Zappa Django project.")
 
+    mydbsubnetgroup = t.add_resource(DBSubnetGroup(
+        "MyDBSubnetGroup",
+        DBSubnetGroupDescription="Subnets available for the RDS DB Instance",
+        SubnetIds=role_info['subnet_ids'],
+    ))
+
     db_instance = t.add_resource(DBInstance(
         '{}Zappa'.format(re.sub(
             r'-([a-z,A-Z,0-9])',
@@ -365,6 +371,7 @@ def create_stack(project_name, role_info, session):
         MasterUsername="postgres",
         MasterUserPassword="postgres",
         PubliclyAccessible=False,
+        DBSubnetGroupName=Ref(mydbsubnetgroup),
         VPCSecurityGroups=[role_info['security_group']]
     ))
 
@@ -411,6 +418,9 @@ def get_aws_rds_host(stack_name, session):
             StackName=stack_name
         )
         stack_status = response['Stacks'][0]['StackStatus']
+        if stack_status == 'ROLLBACK_COMPLETE':
+            click.echo('Error - Stack creation failed (Create RDS Stack).')
+            exit(1)
     aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
 
     return aws_rds_host
@@ -422,11 +432,14 @@ def get_role_name(stack_name, session):
     stack_status = None
     while stack_status != 'CREATE_COMPLETE':
         click.echo("Waiting for stack creation...")
-        time.sleep(3)
+        time.sleep(30)
         response = client.describe_stacks(
             StackName=stack_name
         )
         stack_status = response['Stacks'][0]['StackStatus']
+        if stack_status == 'ROLLBACK_COMPLETE':
+            click.echo('Error - Stack creation failed (Create Role Stack).')
+            exit(1)
     outputs = response['Stacks'][0]['Outputs']
 
     role_name = ''
@@ -434,16 +447,12 @@ def get_role_name(stack_name, session):
     subnet_ids = []
 
     for output in outputs:
-        print(output)
         if output['OutputKey'] == 'RoleName':
             role_name = output['OutputValue']
-            print(output['OutputValue'])
         if output['OutputKey'] == 'SecurityGroupId':
             security_group = output['OutputValue']
-            print(output['OutputValue'])
         if output['Description'] == 'SubnetId':
             subnet_ids.append(output['OutputValue'])
-            print(output['OutputValue'])
 
     return {
         'role_name': role_name,
@@ -643,7 +652,7 @@ def create_role(project_name, session):
     t.add_output(Output(
         'RoleName',
         Description='Role Name',
-        Value=GetAtt(role, "RoleName")
+        Value=Ref(role)
     ))
 
     t.add_output(Output(
@@ -663,8 +672,6 @@ def create_role(project_name, session):
         Description='SubnetId',
         Value=Ref(subnet_2)
     ))
-
-    print(t.to_json(indent=4))
 
     stack_name = 'Zappa-Role-VPC-SG-{}'.format(project_name)
 
