@@ -329,8 +329,8 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
             "manage_roles": False,
             "role_name": role_info['role_name'],
             'vpc_config': {
-                'SubnetIds': (role_info['subnet_ids']),
-                'SecurityGroupIds': role_info['security_group']
+                'SubnetIds': role_info['subnet_ids'],
+                'SecurityGroupIds': (role_info['security_group'])
             }
         }
     }
