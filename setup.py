@@ -66,7 +66,9 @@ def main(project_name, name, username, email, password, aws, build, buildall,
 
     role_stack_name = create_role(project_name, session)
 
-    stack_name = create_stack(project_name, session)
+    role_info = get_role_name(role_stack_name, session)
+
+    stack_name = create_stack(project_name, role_info, session)
 
     create_env_file(project_name, name, email, session)
 
@@ -342,7 +344,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
     return zappa
 
 
-def create_stack(project_name, session):
+def create_stack(project_name, role_info, session):
     """Create Postgres RDS instance using troposphere."""
     stack_name = '{}-zappa-rds-s3'.format(project_name)
 
@@ -362,7 +364,8 @@ def create_stack(project_name, session):
         DBInstanceIdentifier='{}-zappa'.format(project_name),
         MasterUsername="postgres",
         MasterUserPassword="postgres",
-        PubliclyAccessible=False
+        PubliclyAccessible=False,
+        VPCSecurityGroups=[role_info['security_group']]
     ))
 
     t.add_resource(Bucket(
