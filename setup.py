@@ -546,6 +546,13 @@ def create_role(project_name, session):
                 Statement(
                     Effect="Allow",
                     Action=[
+                        Action('lambda', 'InvokeFunction')
+                    ],
+                    Resource=['*']
+                ),
+                Statement(
+                    Effect="Allow",
+                    Action=[
                         Action('logs', '*')
                     ],
                     Resource=['arn:aws:logs:*:*:*']
