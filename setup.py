@@ -422,7 +422,7 @@ def get_aws_rds_host(stack_name, session):
         if stack_status == 'ROLLBACK_COMPLETE':
             click.echo('Error - Stack creation failed (Create RDS Stack).')
             exit(1)
-    click.echo(' done', fg='green')
+    click.secho(' done', fg='green')
     aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
 
     return aws_rds_host
@@ -443,7 +443,7 @@ def get_role_name(stack_name, session):
         if stack_status == 'ROLLBACK_COMPLETE':
             click.echo('Error - Stack creation failed (Create Role Stack).')
             exit(1)
-    click.echo(' done', fg='green')
+    click.secho(' done', fg='green')
     outputs = response['Stacks'][0]['Outputs']
 
     role_name = ''
