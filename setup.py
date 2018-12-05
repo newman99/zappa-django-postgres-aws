@@ -411,9 +411,10 @@ def get_aws_rds_host(stack_name, session):
     """Get the AWS RDS host."""
     client = session.client('cloudformation')
     stack_status = None
+    click.echo("Waiting for stack creation...", nl=False)
     while stack_status != 'CREATE_COMPLETE':
-        click.echo("Waiting for stack creation...")
-        time.sleep(120)
+        click.echo(".", nl=False)
+        time.sleep(30)
         response = client.describe_stacks(
             StackName=stack_name
         )
@@ -421,6 +422,7 @@ def get_aws_rds_host(stack_name, session):
         if stack_status == 'ROLLBACK_COMPLETE':
             click.echo('Error - Stack creation failed (Create RDS Stack).')
             exit(1)
+    click.echo(' done', fg='green')
     aws_rds_host = response['Stacks'][0]['Outputs'][0]['OutputValue']
 
     return aws_rds_host
@@ -430,8 +432,9 @@ def get_role_name(stack_name, session):
     """Get Role name."""
     client = session.client('cloudformation')
     stack_status = None
+    click.echo("Waiting for stack creation...", nl=False)
     while stack_status != 'CREATE_COMPLETE':
-        click.echo("Waiting for stack creation...")
+        click.echo(".", nl=False)
         time.sleep(30)
         response = client.describe_stacks(
             StackName=stack_name
@@ -440,6 +443,7 @@ def get_role_name(stack_name, session):
         if stack_status == 'ROLLBACK_COMPLETE':
             click.echo('Error - Stack creation failed (Create Role Stack).')
             exit(1)
+    click.echo(' done', fg='green')
     outputs = response['Stacks'][0]['Outputs']
 
     role_name = ''
