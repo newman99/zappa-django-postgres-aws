@@ -262,7 +262,7 @@ def create_env_file(project_name, name, email, session):
             random.choices(string.ascii_lowercase + string.digits, k=50))),
         'AWS_ACCESS_KEY_ID': session.get_credentials().access_key,
         'AWS_SECRET_ACCESS_KEY': session.get_credentials().secret_key,
-        'AWS_STORAGE_BUCKET_NAME': 'Zappa-Django-{}'.format(project_name)
+        'AWS_STORAGE_BUCKET_NAME': 'zappa-{}'.format(project_name)
     }
     with open('.env', 'w') as fp:
         for e in env:
@@ -380,7 +380,7 @@ def create_stack(project_name, role_info, session):
             r'-([a-z,A-Z,0-9])',
             lambda x: x.group(1).upper(), project_name.capitalize()
         )),
-        BucketName='Zappa-Django-{}'.format(project_name),
+        BucketName='zappa-{}'.format(project_name),
         CorsConfiguration=CorsConfiguration(
             CorsRules=[CorsRules(
                 AllowedHeaders=["Authorization"],
@@ -411,7 +411,7 @@ def get_aws_rds_host(stack_name, session):
     """Get the AWS RDS host."""
     client = session.client('cloudformation')
     stack_status = None
-    click.echo("Waiting for stack creation...", nl=False)
+    click.echo("Waiting for stack creation..", nl=False)
     while stack_status != 'CREATE_COMPLETE':
         click.echo(".", nl=False)
         time.sleep(30)
@@ -432,7 +432,7 @@ def get_role_name(stack_name, session):
     """Get Role name."""
     client = session.client('cloudformation')
     stack_status = None
-    click.echo("Waiting for stack creation...", nl=False)
+    click.echo("Waiting for stack creation..", nl=False)
     while stack_status != 'CREATE_COMPLETE':
         click.echo(".", nl=False)
         time.sleep(30)
@@ -622,7 +622,7 @@ def create_role(project_name, session):
 
     subnet_1 = t.add_resource(
         ec2.Subnet(
-            'Subnet1{}'.format(project_name),
+            'ZappaSubnet1{}'.format(project_name),
             CidrBlock='172.31.0.0/20',
             AvailabilityZone='us-east-1a',
             VpcId=Ref(myVpc),
@@ -634,7 +634,7 @@ def create_role(project_name, session):
 
     subnet_2 = t.add_resource(
         ec2.Subnet(
-            'Subnet2{}'.format(project_name),
+            'ZappaSubnet2{}'.format(project_name),
             CidrBlock='172.31.16.0/20',
             AvailabilityZone='us-east-1b',
             VpcId=Ref(myVpc),
