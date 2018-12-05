@@ -330,7 +330,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
             "role_name": role_info['role_name'],
             'vpc_config': {
                 'SubnetIds': role_info['subnet_ids'],
-                'SecurityGroupIds': (role_info['security_group'])
+                'SecurityGroupIds': (role_info['security_group'],)
             }
         }
     }
