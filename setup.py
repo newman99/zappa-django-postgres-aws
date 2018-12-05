@@ -75,14 +75,15 @@ def main(project_name, name, username, email, password, build, buildall,
     client = docker.from_env()
 
     if build or buildall:
-        click.echo('Building Docker image...')
+        click.echo('Building Docker image...', nl=False)
         client.images.build(
             path=str(Path.cwd()),
             tag='{}_web:latest'.format(project_name)
         )
+        click.secho(' done', fg='green')
 
     if virtual or buildall:
-        click.echo('Creating virtual Python environment...')
+        click.echo('Creating virtual Python environment...', nl=False)
         client.containers.run(
             '{}_web:latest'.format(project_name),
             'python -m virtualenv ve',
@@ -90,9 +91,10 @@ def main(project_name, name, username, email, password, build, buildall,
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
         )
+        click.secho(' done', fg='green')
 
     if requirements or buildall:
-        click.echo('Installing Python requirements...')
+        click.echo('Installing Python requirements...', nl=False)
         client.containers.run(
             '{}_web:latest'.format(project_name),
             '/bin/bash -c \
@@ -101,12 +103,13 @@ def main(project_name, name, username, email, password, build, buildall,
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
         )
+        click.secho(' done', fg='green')
 
     if startproject or buildall:
         start_project(project_name, client, username,
                       email, password, template)
 
-    create_zappa_settings(project_name, role_stack_name, session, client)
+    create_zappa_settings(project_name, role_info, session, client)
 
     if zappa or buildall:
         aws_lambda_host = create_zappa_project(
@@ -132,7 +135,7 @@ def start_project(project_name, client, username, email, password, template):
         click.echo('Error: a project named "{}" already exists.'.format(
             project_name))
     else:
-        click.echo('Run Django startproject...')
+        click.echo('Run Django startproject...', nl=False)
         client.containers.run(
             '{}_web:latest'.format(project_name),
             've/bin/django-admin startproject {} . --template={}'.format(
@@ -143,8 +146,9 @@ def start_project(project_name, client, username, email, password, template):
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
         )
+        click.secho(' done', fg='green')
 
-        click.echo('Run initial Django migration...')
+        click.echo('Run initial Django migration...', nl=False)
         subprocess.run([
             'docker-compose',
             'up',
@@ -176,6 +180,7 @@ def start_project(project_name, client, username, email, password, template):
             'docker-compose',
             'down'
         ])
+        click.secho(' done', fg='green')
 
 
 def create_zappa_project(
@@ -307,17 +312,15 @@ def create_boto_session():
     return session
 
 
-def create_zappa_settings(project_name, role_stack_name, session, client):
+def create_zappa_settings(project_name, role_info, session, client):
     """Create the zappa_settings.json file."""
-    role_info = get_role_name(role_stack_name, session)
-
     zappa = {
         'dev': {
             'project_name': project_name,
             'django_settings': '{0}.settings'.format(project_name),
             'profile_name': session.profile_name,
             'profile-region': session.region_name,
-            's3_bucket': 'Zappa-{}'.format(''.join(
+            's3_bucket': 'zappa-{}'.format(''.join(
                 random.choices(string.ascii_lowercase + string.digits, k=9))
             ),
             'runtime': 'python3.6',
@@ -335,7 +338,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
         }
     }
 
-    zappa['dev']['s3_bucket'] = 'Zappa-{}'.format(
+    zappa['dev']['s3_bucket'] = 'zappa-{}'.format(
         ''.join(random.choices(string.ascii_lowercase + string.digits, k=9)))
 
     with open('zappa_settings.json', 'w') as fp:
@@ -467,7 +470,8 @@ def get_role_name(stack_name, session):
 
 def deploy_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
-    click.echo('Deploying Django project on AWS Lambda using Zappa...')
+    click.echo(
+        'Deploying Django project on AWS Lambda using Zappa...', nl=False)
     try:
         client.containers.run(
             '{}_web:latest'.format(project_name),
@@ -480,6 +484,7 @@ def deploy_zappa(project_name, client):
                 }
             }
         )
+        click.secho(' done', fg='green')
     except docker.errors.ContainerError:
         pass
 
@@ -489,7 +494,8 @@ def deploy_zappa(project_name, client):
 def update_zappa(project_name, client):
     """Deploy to AWS Lambda using Zappa."""
     click.echo(
-        'Updating Zappa deployment to add Lambda host to ALLOWED_HOSTS...'
+        'Updating Zappa deployment to add Lambda host to ALLOWED_HOSTS...',
+        nl=False
     )
     try:
         client.containers.run(
@@ -503,6 +509,7 @@ def update_zappa(project_name, client):
                 }
             }
         )
+        click.secho(' done', fg='green')
     except docker.errors.ContainerError:
         pass
 
