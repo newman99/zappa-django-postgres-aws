@@ -262,7 +262,7 @@ def create_env_file(project_name, name, email, session):
             random.choices(string.ascii_lowercase + string.digits, k=50))),
         'AWS_ACCESS_KEY_ID': session.get_credentials().access_key,
         'AWS_SECRET_ACCESS_KEY': session.get_credentials().secret_key,
-        'AWS_STORAGE_BUCKET_NAME': 'zappa-django-{}'.format(project_name)
+        'AWS_STORAGE_BUCKET_NAME': 'Zappa-Django-{}'.format(project_name)
     }
     with open('.env', 'w') as fp:
         for e in env:
@@ -317,7 +317,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
             'django_settings': '{0}.settings'.format(project_name),
             'profile_name': session.profile_name,
             'profile-region': session.region_name,
-            's3_bucket': 'zappa-{}'.format(''.join(
+            's3_bucket': 'Zappa-{}'.format(''.join(
                 random.choices(string.ascii_lowercase + string.digits, k=9))
             ),
             'runtime': 'python3.6',
@@ -335,7 +335,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
         }
     }
 
-    zappa['dev']['s3_bucket'] = 'zappa-{}'.format(
+    zappa['dev']['s3_bucket'] = 'Zappa-{}'.format(
         ''.join(random.choices(string.ascii_lowercase + string.digits, k=9)))
 
     with open('zappa_settings.json', 'w') as fp:
@@ -346,7 +346,7 @@ def create_zappa_settings(project_name, role_stack_name, session, client):
 
 def create_stack(project_name, role_info, session):
     """Create Postgres RDS instance using troposphere."""
-    stack_name = '{}-zappa-rds-s3'.format(project_name)
+    stack_name = 'Zappa-rds-s3-{}'.format(project_name)
 
     t = Template()
 
@@ -367,7 +367,7 @@ def create_stack(project_name, role_info, session):
         DBInstanceClass="db.t2.micro",
         Engine="postgres",
         EngineVersion="10.4",
-        DBInstanceIdentifier='{}-zappa'.format(project_name),
+        DBInstanceIdentifier='Zappa-{}'.format(project_name),
         MasterUsername="postgres",
         MasterUserPassword="postgres",
         PubliclyAccessible=False,
@@ -380,7 +380,7 @@ def create_stack(project_name, role_info, session):
             r'-([a-z,A-Z,0-9])',
             lambda x: x.group(1).upper(), project_name.capitalize()
         )),
-        BucketName='zappa-django-{}'.format(project_name),
+        BucketName='Zappa-Django-{}'.format(project_name),
         CorsConfiguration=CorsConfiguration(
             CorsRules=[CorsRules(
                 AllowedHeaders=["Authorization"],
@@ -625,7 +625,10 @@ def create_role(project_name, session):
             'Subnet1{}'.format(project_name),
             CidrBlock='172.31.0.0/20',
             AvailabilityZone='us-east-1a',
-            VpcId=Ref(myVpc)
+            VpcId=Ref(myVpc),
+            Tags=Tags(
+                Name='ZappaSubnet1{}'.format(project_name),
+            )
         )
     )
 
@@ -634,7 +637,10 @@ def create_role(project_name, session):
             'Subnet2{}'.format(project_name),
             CidrBlock='172.31.16.0/20',
             AvailabilityZone='us-east-1b',
-            VpcId=Ref(myVpc)
+            VpcId=Ref(myVpc),
+            Tags=Tags(
+                Name='ZappaSubnet2{}'.format(project_name),
+            )
         )
     )
 
