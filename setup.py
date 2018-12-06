@@ -148,7 +148,8 @@ def start_project(project_name, client, username, email, password, template):
         )
         click.secho(' done', fg='green')
 
-        click.echo('Run initial Django migration...')
+        click.echo('Run initial Django migration in Docker container:')
+        click.echo('---------------------------------------------------------')
         subprocess.run([
             'docker-compose',
             'run',
@@ -156,9 +157,11 @@ def start_project(project_name, client, username, email, password, template):
             '/var/task/manage.py',
             'migrate'
         ])
-        click.secho(' done', fg='green')
+        click.echo('---------------------------------------------------------')
+        click.secho('... done', fg='green')
 
-        click.echo('Run Django createsuperuser in Docker container...')
+        click.echo('Run Django createsuperuser in Docker container:')
+        click.echo('---------------------------------------------------------')
         subprocess.run([
             'docker-compose',
             'run',
@@ -172,7 +175,8 @@ def start_project(project_name, client, username, email, password, template):
                     username, email, password
             )
         ])
-        click.secho(' done', fg='green')
+        click.echo('---------------------------------------------------------')
+        click.secho('... done', fg='green')
 
 
 def create_zappa_project(
