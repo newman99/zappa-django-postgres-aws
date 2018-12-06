@@ -148,24 +148,20 @@ def start_project(project_name, client, username, email, password, template):
         )
         click.secho(' done', fg='green')
 
-        click.echo('Run initial Django migration...', nl=False)
+        click.echo('Run initial Django migration...')
         subprocess.run([
             'docker-compose',
-            'up',
-            '-d'
-        ])
-        subprocess.run([
-            'docker-compose',
-            'exec',
+            'run',
             'web',
             '/var/task/manage.py',
             'migrate'
         ])
+        click.secho(' done', fg='green')
 
         click.echo('Run Django createsuperuser in Docker container...')
         subprocess.run([
             'docker-compose',
-            'exec',
+            'run',
             'web',
             '/bin/bash',
             '-c',
@@ -176,17 +172,13 @@ def start_project(project_name, client, username, email, password, template):
                     username, email, password
             )
         ])
-        subprocess.run([
-            'docker-compose',
-            'down'
-        ])
         click.secho(' done', fg='green')
 
 
 def create_zappa_project(
     project_name, stack_name, session, client, username, email, password
 ):
-    """Create the zappa project."""
+    """Create the Zappa project."""
     aws_rds_host = get_aws_rds_host(stack_name, session)
 
     with open('.env', 'a') as fp:
@@ -199,7 +191,9 @@ def create_zappa_project(
 
     update_zappa(project_name, client)
 
-    click.echo('Run initial Django migration for Zappa deployment...')
+    click.echo(
+        'Run initial Django migration for Zappa deployment...', nl=False
+    )
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"',
@@ -211,7 +205,10 @@ def create_zappa_project(
             }
         }
     )
-    click.echo('Create Django superuser {} for Zappa...'.format(username))
+    click.secho(' done', fg='green')
+    click.echo(
+        'Create Django superuser {} for Zappa...'.format(username), nl=False
+    )
     try:
         django_command = '''from django.contrib.auth import get_user_model; \
         User = get_user_model(); \
@@ -232,10 +229,11 @@ def create_zappa_project(
                 }
             }
         )
+        click.secho(' done', fg='green')
     except docker.errors.ContainerError:
         pass
 
-    click.echo('Running collectstatic for Zappa deployment...')
+    click.echo('Running collectstatic for Zappa deployment...', nl=False)
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate \
@@ -249,6 +247,7 @@ def create_zappa_project(
             }
         }
     )
+    click.secho(' done', fg='green')
 
     return(aws_lambda_host)
 
@@ -355,8 +354,8 @@ def create_stack(project_name, role_info, session):
 
     t.add_description("RDS PostgreSQL DB instance for Zappa Django project.")
 
-    mydbsubnetgroup = t.add_resource(DBSubnetGroup(
-        "MyDBSubnetGroup",
+    dbsubnetgroup = t.add_resource(DBSubnetGroup(
+        'ZappaDBSubnetGroup{}'.format(project_name),
         DBSubnetGroupDescription="Subnets available for the RDS DB Instance",
         SubnetIds=role_info['subnet_ids'],
     ))
@@ -374,7 +373,7 @@ def create_stack(project_name, role_info, session):
         MasterUsername="postgres",
         MasterUserPassword="postgres",
         PubliclyAccessible=False,
-        DBSubnetGroupName=Ref(mydbsubnetgroup),
+        DBSubnetGroupName=Ref(dbsubnetgroup),
         VPCSecurityGroups=[role_info['security_group']]
     ))
 
@@ -484,9 +483,9 @@ def deploy_zappa(project_name, client):
                 }
             }
         )
-        click.secho(' done', fg='green')
     except docker.errors.ContainerError:
         pass
+    click.secho(' done', fg='green')
 
     return get_lambda_host(project_name, client)
 
@@ -509,9 +508,9 @@ def update_zappa(project_name, client):
                 }
             }
         )
-        click.secho(' done', fg='green')
     except docker.errors.ContainerError:
         pass
+    click.secho(' done', fg='green')
 
 
 def get_lambda_host(project_name, client):
