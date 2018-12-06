@@ -87,7 +87,7 @@ Run the setup:
 python3 setup.py project_name
 ```
 
-And answer a few questions.
+Answer a few questions.
 
 Your new development environments will be ready in about 20 minutes.
 
