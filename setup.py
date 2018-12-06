@@ -29,8 +29,18 @@ from awacs.sts import AssumeRole
 TEMPLATE = 'https://gitlab.com/newman99/django-split-settings-project-template/-/archive/master/django-split-settings-project-template-master.zip'  # noqa
 
 
+def validate_project_name(ctx, param, value):
+    """Validate project name - only letters, numbers, and underscores."""
+    if not re.match(r"^[a-zA-Z0-9_]*$", value):
+        raise click.BadParameter(
+            '[{}] only letters, numbers, and underscores are allowed.'.format(
+                value
+            )
+        )
+
+
 @click.command()
-@click.argument('project_name')
+@click.argument('project_name', callback=validate_project_name)
 @click.option('-B', '--buildall', is_flag=True, show_default=True,
               help='Build all')
 @click.option('-b', '--build', is_flag=True, show_default=True,
