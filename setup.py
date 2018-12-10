@@ -39,6 +39,13 @@ def validate_project_name(ctx, param, value):
         )
 
 
+def accept_charges(ctx, param, value):
+    """Acknowledge AWS charges."""
+    if not value:
+        click.echo('Please acknowledge that AWS charges apply to continue.')
+        exit(1)
+
+
 @click.command()
 @click.argument('project_name', callback=validate_project_name)
 @click.option('-B', '--buildall', is_flag=True, show_default=True,
@@ -53,6 +60,10 @@ def validate_project_name(ctx, param, value):
               help="Django startproject template file")
 @click.option('-v', '--virtual', is_flag=True, show_default=True,
               help='Create a new Python virtual environment.')
+@click.option('-y', '--acknowledge', is_flag=True, show_default=True,
+              prompt='AWS charges apply. Do you want to continue?',
+              help='Acknowledge AWS charges apply warning.',
+              callback=accept_charges)
 @click.option('-z', '--zappa', is_flag=True, show_default=True,
               help='Deploy Zappa.')
 @click.option('--name', prompt='Enter your full name', help="Full name")
@@ -64,7 +75,7 @@ def validate_project_name(ctx, param, value):
               hide_input=True, confirmation_prompt=True,
               help="Django admin password")
 def main(project_name, name, username, email, password, build, buildall,
-         requirements, startproject, virtual, zappa, template):
+         requirements, startproject, virtual, acknowledge, zappa, template):
     """Django - Docker - Zappa - AWS - Lambda.
 
     Build and deploy a Django app in Docker for local development and
