@@ -7,3 +7,4 @@ venv/*
 manage.py
 postgresql/*
 zappa_settings.json
+placebo/*
