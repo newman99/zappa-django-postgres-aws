@@ -1,13 +1,30 @@
+"""Test setup.py file."""
 import unittest
 import botocore
-from pathlib import Path
-from setup import create_env_file
+import boto3
+from setup import create_env_file, create_zappa_settings
 
-class TestSomething(unittest.TestCase):
-    def testIt(self):
+
+class TestSetup(unittest.TestCase):
+    """Test setup.py file."""
+
+    def testEnvFile(self):
+        """Test create env file."""
         session = botocore.session.Session()
-        env = create_env_file('project_name', 'name', 'email', session) 
+        env = create_env_file('project_name', 'name', 'email', session)
         self.assertEqual(env['PROJECT_NAME'], 'project_name')
+
+    def testZappaFile(self):
+        """Test create zappa settings file."""
+        session = boto3.Session(profile_name="newman")
+        role_info = {
+            'role_name': 'role_name',
+            'subnet_ids': [],
+            'security_group': 'sg'
+        }
+        zappa = create_zappa_settings('project_name', role_info, session)
+        self.assertEqual(zappa['dev']['project_name'], 'project_name')
+
 
 if __name__ == '__main__':
     unittest.main()
