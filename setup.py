@@ -37,6 +37,7 @@ def validate_project_name(ctx, param, value):
                 value
             )
         )
+    return value
 
 
 def accept_charges(ctx, param, value):
@@ -207,13 +208,13 @@ def create_zappa_project(
     """Create the Zappa project."""
     aws_rds_host = get_aws_rds_host(stack_name, session)
 
-    with open('.env', 'a') as fp:
-        fp.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
+    with open('.env', 'a') as file:
+        file.write('AWS_RDS_HOST={}\n'.format(aws_rds_host))
 
     aws_lambda_host = deploy_zappa(project_name, client)
 
-    with open('.env', 'a') as fp:
-        fp.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
+    with open('.env', 'a') as file:
+        file.write('AWS_LAMBDA_HOST={}\n'.format(aws_lambda_host))
 
     update_zappa(project_name, client)
 
@@ -284,7 +285,7 @@ def create_env_file(project_name, name, email, session):
         'PROJECT_NAME': project_name,
         'ADMIN_USER': name,
         'ADMIN_EMAIL': email,
-        'DB_NAME': project_name,
+        'DB_NAME': 'postgres',
         'DB_USER': 'postgres',
         'DB_PASSWORD': ''.join(
             random.choices(string.ascii_letters + string.digits, k=16)),
@@ -295,9 +296,10 @@ def create_env_file(project_name, name, email, session):
         'AWS_SECRET_ACCESS_KEY': session.get_credentials().secret_key,
         'AWS_STORAGE_BUCKET_NAME': 'zappa-{}'.format(project_name)
     }
-    with open('.env', 'w') as fp:
+    with open('.env', 'w') as file:
         for e in env:
-            fp.write('{}={}\n'.format(e, env[e]))
+            file.write('{}={}\n'.format(e, env[e]))
+
     return env
 
 
@@ -367,8 +369,8 @@ def create_zappa_settings(project_name, role_info, session, client):
     zappa['dev']['s3_bucket'] = 'zappa-{}'.format(
         ''.join(random.choices(string.ascii_lowercase + string.digits, k=9)))
 
-    with open('zappa_settings.json', 'w') as fp:
-        fp.write(json.dumps(zappa, indent=4, sort_keys=True))
+    with open('zappa_settings.json', 'w') as file:
+        file.write(json.dumps(zappa, indent=4, sort_keys=True))
 
     return zappa
 
