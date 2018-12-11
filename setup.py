@@ -132,7 +132,7 @@ def main(project_name, name, username, email, password, build, buildall,
         start_project(project_name, client, username,
                       email, password, template)
 
-    create_zappa_settings(project_name, role_info, session, client)
+    create_zappa_settings(project_name, role_info, session)
 
     if zappa or buildall:
         aws_lambda_host = create_zappa_project(
@@ -340,7 +340,7 @@ def create_boto_session():
     return session
 
 
-def create_zappa_settings(project_name, role_info, session, client):
+def create_zappa_settings(project_name, role_info, session):
     """Create the zappa_settings.json file."""
     zappa = {
         'dev': {
