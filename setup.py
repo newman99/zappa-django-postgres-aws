@@ -89,9 +89,10 @@ def main(project_name, name, username, email, password, build, buildall,
 
     role_info = get_role_name(role_stack_name, session)
 
-    stack_name = create_stack(project_name, role_info, session)
+    env = create_env_file(project_name, name, email, session)
 
-    create_env_file(project_name, name, email, session)
+    stack_name = create_stack(
+        project_name, role_info, env['DB_PASSWORD'], session)
 
     client = docker.from_env()
 
@@ -283,9 +284,10 @@ def create_env_file(project_name, name, email, session):
         'PROJECT_NAME': project_name,
         'ADMIN_USER': name,
         'ADMIN_EMAIL': email,
-        'DB_NAME': 'postgres',
+        'DB_NAME': project_name,
         'DB_USER': 'postgres',
-        'DB_PASSWORD': 'postgres',
+        'DB_PASSWORD': ''.join(
+            random.choices(string.ascii_letters + string.digits, k=16)),
         'ZAPPA_DEPLOYMENT_TYPE': 'dev',
         'DJANGO_SECRET_KEY': '{}'.format(''.join(
             random.choices(string.ascii_lowercase + string.digits, k=50))),
@@ -371,7 +373,7 @@ def create_zappa_settings(project_name, role_info, session, client):
     return zappa
 
 
-def create_stack(project_name, role_info, session):
+def create_stack(project_name, role_info, password, session):
     """Create Postgres RDS instance using troposphere."""
     stack_name = 'Zappa-rds-s3-{}'.format(project_name)
 
@@ -396,7 +398,7 @@ def create_stack(project_name, role_info, session):
         EngineVersion="10.4",
         DBInstanceIdentifier='Zappa-{}'.format(project_name),
         MasterUsername="postgres",
-        MasterUserPassword="postgres",
+        MasterUserPassword=password,
         PubliclyAccessible=False,
         DBSubnetGroupName=Ref(dbsubnetgroup),
         VPCSecurityGroups=[role_info['security_group']]
@@ -678,7 +680,7 @@ def create_role(project_name, session):
     security_group = t.add_resource(
         ec2.SecurityGroup(
             'ZappaSG{}'.format(project_name),
-            GroupDescription='postgres traffic allowed',
+            GroupDescription='Postgres traffic allowed',
             VpcId=Ref(myVpc),
             Tags=Tags(
                 Name='ZappaSG{}'.format(project_name),
