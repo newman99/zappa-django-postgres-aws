@@ -1,7 +1,6 @@
 """Test setup.py file."""
 import unittest
 import boto3
-import placebo
 from setup import create_env_file, create_zappa_settings
 
 
@@ -24,19 +23,6 @@ class TestSetup(unittest.TestCase):
         }
         zappa = create_zappa_settings('project_name', role_info, session)
         self.assertEqual(zappa['dev']['project_name'], 'project_name')
-
-    def testCreateStack(self):
-        """Test create AWS CloudFormation stack."""
-        session = boto3.Session(profile_name="default")
-        pill = placebo.attach(
-            session,
-            data_path='placebo'
-        )
-        pill.record()
-        aws_lambda = session.client('lambda')
-        aws_lambda.list_functions()
-        foo = pill.playback()
-        print(foo)
 
 
 if __name__ == '__main__':
