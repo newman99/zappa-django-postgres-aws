@@ -1,0 +1,7 @@
+before_script:
+  test:
+  script:
+  - apt-get update -qy
+  - apt-get install -y python-dev python-pip
+  - pip install -r test_requirements.txt
+  - python3 test.py
