@@ -15,7 +15,7 @@ class TestSetup(unittest.TestCase):
 
     def testZappaFile(self):
         """Test create zappa settings file."""
-        session = boto3.Session(profile_name="default")
+        session = boto3.Session()
         role_info = {
             'role_name': 'role_name',
             'subnet_ids': [],
