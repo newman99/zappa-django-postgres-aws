@@ -2,3 +2,4 @@ boto3>=1.9.33
 placebo>=0.8.2
 click>=7.0
 docker>=3.5.1
+troposphere>=2.3.4
