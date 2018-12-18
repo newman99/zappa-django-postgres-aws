@@ -5,8 +5,5 @@ test:
   - pip install -r test_requirements.txt
   - mkdir /root/.aws
   - echo -e "[default]\nregion = us-east-1" > /root/.aws/config
-  - echo -e "[default]\naws_access_key_id = " > /root/.aws/credentials
-  - 'cat /dev/urandom | tr -dc "A-Z" | fold -w 20 | head -n 1 >> /root/.aws/credentials'
-  - echo -e "\n\naws_secret_access_key = " >> /root/.aws/credentials
-  - "cat /dev/urandom | tr -dc 'a-zA-Z0-9+/' | fold -w 40 | head -n 1 >> /root/.aws/credentials"
+  - echo -e "[default]\naws_access_key_id = ABCDEABCDEABCDE\n\naws_secret_access_key = ABCDEABCDEABCDEABCDEABCDEABCDE\n" > /root/.aws/credentials
   - python test.py
