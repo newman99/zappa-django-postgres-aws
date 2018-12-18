@@ -1,7 +1,7 @@
 awacs>=0.8.1
 boto3>=1.9.33
 placebo>=0.8.2
-click>=7.0
+click~=6.7
 docker>=3.5.1
 troposphere>=2.3.4
 urllib3>=1.24.1
