@@ -3,4 +3,8 @@ image: lambci/lambda:build-python3.6
 test:
   script:
   - pip install -r test_requirements.txt
+  - mkdir -p /root/.aws/config
+  - echo -e "[default]\nregion = us-east-1" > /root/.aws/config
+  - mkdir /root/.aws/credentials
+  - echo -e "[default]\naws_access_key_id = ABCDEABCDEABCDE\n\naws_secret_access_key = ABCDEABCDEABCDEABCDEABCDEABCDE\n" > /root/.aws/credentials
   - python test.py
