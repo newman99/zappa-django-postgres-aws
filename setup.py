@@ -174,6 +174,7 @@ def start_project(project_name, client, username, email, password, template):
 
         click.echo('Run initial Django migration in Docker container:')
         click.echo('---------------------------------------------------------')
+        subprocess.run(['docker-compose', 'build'])
         subprocess.run([
             'docker-compose',
             'run',
@@ -295,7 +296,9 @@ def create_env_file(project_name, name, email, session):
             random.choices(string.ascii_lowercase + string.digits, k=50))),
         'AWS_ACCESS_KEY_ID': session.get_credentials().access_key,
         'AWS_SECRET_ACCESS_KEY': session.get_credentials().secret_key,
-        'AWS_STORAGE_BUCKET_NAME': 'zappa-{}'.format(project_name)
+        'AWS_STORAGE_BUCKET_NAME': 'zappa-{}'.format(
+            stringcase.spinalcase(project_name)
+        )
     }
     with open('.env', 'w') as file:
         for e in env:
@@ -396,7 +399,9 @@ def create_stack(project_name, role_info, password, session):
         DBInstanceClass="db.t2.micro",
         Engine="postgres",
         EngineVersion="10.4",
-        DBInstanceIdentifier='Zappa-{}'.format(stringcase.pascalcase(project_name)),
+        DBInstanceIdentifier='Zappa-{}'.format(
+            stringcase.pascalcase(project_name)
+        ),
         MasterUsername="postgres",
         MasterUserPassword=password,
         PubliclyAccessible=False,
@@ -645,7 +650,9 @@ def create_role(project_name, session):
             'VPC{}'.format(stringcase.pascalcase(project_name)),
             CidrBlock='172.31.0.0/16',
             Tags=Tags(
-                Name='ZappaVPC{}'.format(stringcase.pascalcase(project_name)),
+                Name='ZappaVPC{}'.format(
+                    stringcase.pascalcase(project_name)
+                ),
             )
         )
     )
@@ -657,7 +664,9 @@ def create_role(project_name, session):
             AvailabilityZone='us-east-1a',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='ZappaSubnet1{}'.format(stringcase.pascalcase(project_name)),
+                Name='ZappaSubnet1{}'.format(
+                    stringcase.pascalcase(project_name)
+                ),
             )
         )
     )
@@ -669,7 +678,9 @@ def create_role(project_name, session):
             AvailabilityZone='us-east-1b',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='ZappaSubnet2{}'.format(stringcase.pascalcase(project_name)),
+                Name='ZappaSubnet2{}'.format(
+                    stringcase.pascalcase(project_name)
+                ),
             )
         )
     )
@@ -687,11 +698,15 @@ def create_role(project_name, session):
     t.add_resource(
         ec2.SecurityGroupIngress(
             "{}GroupIngress".format(stringcase.pascalcase(project_name)),
-            GroupId=Ref('ZappaSG{}'.format(stringcase.pascalcase(project_name))),
+            GroupId=Ref('ZappaSG{}'.format(
+                stringcase.pascalcase(project_name)
+            )),
             IpProtocol='tcp',
             FromPort='5432',
             ToPort='5432',
-            SourceSecurityGroupId=Ref('ZappaSG{}'.format(stringcase.pascalcase(project_name))),
+            SourceSecurityGroupId=Ref('ZappaSG{}'.format(
+                stringcase.pascalcase(project_name)
+            )),
             DependsOn='ZappaSG{}'.format(stringcase.pascalcase(project_name)),
         )
     )
@@ -720,7 +735,9 @@ def create_role(project_name, session):
         Value=Ref(subnet_2)
     ))
 
-    stack_name = '{}-Zappa-Role-VPC-SG'.format(stringcase.pascalcase(project_name))
+    stack_name = '{}-Zappa-Role-VPC-SG'.format(
+        stringcase.pascalcase(project_name)
+    )
 
     resource = session.resource('cloudformation')
     resource.create_stack(
