@@ -39,10 +39,10 @@ Install and configure [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide
 
 Install [Docker](https://www.docker.com/get-started) and [Docker Compose](https://docs.docker.com/compose/install/).
 
-Install awacs, boto3, botocore, click, docker, urllib3, and troposphere using pip:
+Install awacs, boto3, botocore, click, docker, urllib3, strincase, and troposphere using pip:
 
 ```bash
-pip install awacs boto3 botocore click docker urllib3 troposphere
+pip install awacs boto3 botocore click docker urllib3 troposphere stringcase
 ```
 
 Install [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) (optional).

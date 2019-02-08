@@ -17,6 +17,7 @@ import boto3
 import botocore
 import click
 import docker
+import stringcase
 from troposphere import ec2, GetAtt, Output, Ref, Tags, Template
 from troposphere.rds import DBInstance, DBSubnetGroup
 from troposphere.s3 import Bucket, CorsConfiguration, CorsRules, PublicRead
@@ -377,28 +378,25 @@ def create_zappa_settings(project_name, role_info, session):
 
 def create_stack(project_name, role_info, password, session):
     """Create Postgres RDS instance using troposphere."""
-    stack_name = 'Zappa-rds-s3-{}'.format(project_name)
+    stack_name = '{}-Zappa-RDS-S3'.format(stringcase.pascalcase(project_name))
 
     t = Template()
 
     t.add_description("RDS PostgreSQL DB instance for Zappa Django project.")
 
     dbsubnetgroup = t.add_resource(DBSubnetGroup(
-        'ZappaDBSubnetGroup{}'.format(project_name),
+        'ZappaDBSubnetGroup{}'.format(stringcase.pascalcase(project_name)),
         DBSubnetGroupDescription="Subnets available for the RDS DB Instance",
         SubnetIds=role_info['subnet_ids'],
     ))
 
     db_instance = t.add_resource(DBInstance(
-        '{}Zappa'.format(re.sub(
-            r'-([a-z,A-Z,0-9])',
-            lambda x: x.group(1).upper(), project_name.capitalize()
-        )),
+        '{}Zappa'.format(stringcase.pascalcase(project_name)),
         AllocatedStorage="20",
         DBInstanceClass="db.t2.micro",
         Engine="postgres",
         EngineVersion="10.4",
-        DBInstanceIdentifier='Zappa-{}'.format(project_name),
+        DBInstanceIdentifier='Zappa-{}'.format(stringcase.pascalcase(project_name)),
         MasterUsername="postgres",
         MasterUserPassword=password,
         PubliclyAccessible=False,
@@ -407,11 +405,8 @@ def create_stack(project_name, role_info, password, session):
     ))
 
     t.add_resource(Bucket(
-        '{}S3Zappa'.format(re.sub(
-            r'-([a-z,A-Z,0-9])',
-            lambda x: x.group(1).upper(), project_name.capitalize()
-        )),
-        BucketName='zappa-{}'.format(project_name),
+        '{}S3Zappa'.format(stringcase.pascalcase(project_name)),
+        BucketName='zappa-{}'.format(stringcase.spinalcase(project_name)),
         CorsConfiguration=CorsConfiguration(
             CorsRules=[CorsRules(
                 AllowedHeaders=["Authorization"],
@@ -623,8 +618,8 @@ def create_role(project_name, session):
     )
 
     role = t.add_resource(IAM_Role(
-        'ZappaRole{}'.format(project_name),
-        RoleName='ZappaRole{}'.format(project_name),
+        'ZappaRole{}'.format(stringcase.pascalcase(project_name)),
+        RoleName='ZappaRole{}'.format(stringcase.pascalcase(project_name)),
         AssumeRolePolicyDocument=Policy(
             Statement=[
                 Statement(
@@ -647,57 +642,57 @@ def create_role(project_name, session):
 
     myVpc = t.add_resource(
         ec2.VPC(
-            'VPC{}'.format(project_name),
+            'VPC{}'.format(stringcase.pascalcase(project_name)),
             CidrBlock='172.31.0.0/16',
             Tags=Tags(
-                Name='ZappaVPC{}'.format(project_name),
+                Name='ZappaVPC{}'.format(stringcase.pascalcase(project_name)),
             )
         )
     )
 
     subnet_1 = t.add_resource(
         ec2.Subnet(
-            'ZappaSubnet1{}'.format(project_name),
+            'ZappaSubnet1{}'.format(stringcase.pascalcase(project_name)),
             CidrBlock='172.31.0.0/20',
             AvailabilityZone='us-east-1a',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='ZappaSubnet1{}'.format(project_name),
+                Name='ZappaSubnet1{}'.format(stringcase.pascalcase(project_name)),
             )
         )
     )
 
     subnet_2 = t.add_resource(
         ec2.Subnet(
-            'ZappaSubnet2{}'.format(project_name),
+            'ZappaSubnet2{}'.format(stringcase.pascalcase(project_name)),
             CidrBlock='172.31.16.0/20',
             AvailabilityZone='us-east-1b',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='ZappaSubnet2{}'.format(project_name),
+                Name='ZappaSubnet2{}'.format(stringcase.pascalcase(project_name)),
             )
         )
     )
 
     security_group = t.add_resource(
         ec2.SecurityGroup(
-            'ZappaSG{}'.format(project_name),
+            'ZappaSG{}'.format(stringcase.pascalcase(project_name)),
             GroupDescription='Postgres traffic allowed',
             VpcId=Ref(myVpc),
             Tags=Tags(
-                Name='ZappaSG{}'.format(project_name),
+                Name='ZappaSG{}'.format(stringcase.pascalcase(project_name)),
             )
         )
     )
     t.add_resource(
         ec2.SecurityGroupIngress(
-            "{}GroupIngress".format(project_name),
-            GroupId=Ref('ZappaSG{}'.format(project_name),),
+            "{}GroupIngress".format(stringcase.pascalcase(project_name)),
+            GroupId=Ref('ZappaSG{}'.format(stringcase.pascalcase(project_name))),
             IpProtocol='tcp',
             FromPort='5432',
             ToPort='5432',
-            SourceSecurityGroupId=Ref('ZappaSG{}'.format(project_name),),
-            DependsOn='ZappaSG{}'.format(project_name),
+            SourceSecurityGroupId=Ref('ZappaSG{}'.format(stringcase.pascalcase(project_name))),
+            DependsOn='ZappaSG{}'.format(stringcase.pascalcase(project_name)),
         )
     )
 
@@ -725,7 +720,7 @@ def create_role(project_name, session):
         Value=Ref(subnet_2)
     ))
 
-    stack_name = 'Zappa-Role-VPC-SG-{}'.format(project_name)
+    stack_name = '{}-Zappa-Role-VPC-SG'.format(stringcase.pascalcase(project_name))
 
     resource = session.resource('cloudformation')
     resource.create_stack(
