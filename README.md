@@ -84,7 +84,7 @@ git init
 Run the setup:
 
 ```bash
-python3 setup.py project_name
+python3 setup.py project_name --buildall
 ```
 
 Answer a few questions.
