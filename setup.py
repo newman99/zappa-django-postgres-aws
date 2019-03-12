@@ -111,6 +111,7 @@ def main(project_name, name, username, email, password, build, buildall,
         client.containers.run(
             '{}_web:latest'.format(project_name),
             'python -m virtualenv ve',
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
@@ -123,6 +124,7 @@ def main(project_name, name, username, email, password, build, buildall,
             '{}_web:latest'.format(project_name),
             '/bin/bash -c \
             "source ve/bin/activate && pip install -r requirements.txt"',
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
@@ -166,30 +168,49 @@ def start_project(project_name, client, username, email, password, template):
                 project_name,
                 template
             ),
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             }
         )
         click.secho(' done', fg='green')
 
-        click.echo('Run initial Django migration in Docker container:')
+        click.echo('Build Docker container:')
         click.echo('---------------------------------------------------------')
         subprocess.run(['docker-compose', 'build'])
+        click.echo('---------------------------------------------------------')
+        click.secho('... done', fg='green')
+        click.echo('Run initial Django migration in Docker container:')
+        click.echo('---------------------------------------------------------')
+        subprocess.run(['docker-compose', 'down'])
+
         subprocess.run([
             'docker-compose',
             'run',
+            '--rm',
+            '-d',
+            'db',
+            'postgres'
+        ])
+
+        subprocess.run([
+            'docker-compose',
+            'run',
+            '--rm',
             'web',
             '/var/task/manage.py',
             'migrate'
         ])
+        subprocess.run(['docker-compose', 'down'])
         click.echo('---------------------------------------------------------')
         click.secho('... done', fg='green')
 
         click.echo('Run Django createsuperuser in Docker container:')
-        click.echo('---------------------------------------------------------')
+        click.echo('---------------------------------------------------------') 
         subprocess.run([
             'docker-compose',
             'run',
+            '--rm',
             'web',
             '/bin/bash',
             '-c',
@@ -200,6 +221,7 @@ def start_project(project_name, client, username, email, password, template):
                     username, email, password
             )
         ])
+        subprocess.run(['docker-compose', 'down'])
         click.echo('---------------------------------------------------------')
         click.secho('... done', fg='green')
 
@@ -226,6 +248,7 @@ def create_zappa_project(
     client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && zappa manage dev migrate"',
+        remove=True,
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             '{}/.aws'.format(Path.home()): {
@@ -250,6 +273,7 @@ def create_zappa_project(
         client.containers.run(
             '{}_web:latest'.format(project_name),
             zappa_command,
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
                 '{}/.aws'.format(Path.home()): {
@@ -268,6 +292,7 @@ def create_zappa_project(
         '/bin/bash -c "source ve/bin/activate \
         && python manage.py collectstatic --noinput"',
         environment={'DJANGO_ENV': 'aws-dev'},
+        remove=True,
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             '{}/.aws'.format(Path.home()): {
@@ -504,6 +529,7 @@ def deploy_zappa(project_name, client):
         client.containers.run(
             '{}_web:latest'.format(project_name),
             '/bin/bash -c "source ve/bin/activate && zappa deploy dev"',
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
                 '{}/.aws'.format(Path.home()): {
@@ -529,6 +555,7 @@ def update_zappa(project_name, client):
         client.containers.run(
             '{}_web:latest'.format(project_name),
             '/bin/bash -c "source ve/bin/activate && zappa update dev"',
+            remove=True,
             volumes={
                 Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
                 '{}/.aws'.format(Path.home()): {
@@ -547,6 +574,7 @@ def get_lambda_host(project_name, client):
     output = client.containers.run(
         '{}_web:latest'.format(project_name),
         '/bin/bash -c "source ve/bin/activate && zappa status dev"',
+        remove=True,
         volumes={
             Path.cwd(): {'bind': '/var/task', 'mode': 'rw'},
             '{}/.aws'.format(Path.home()): {
