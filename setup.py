@@ -207,6 +207,7 @@ def start_project(project_name, client, username, email, password, template):
 
         click.echo('Run Django createsuperuser in Docker container:')
         click.echo('---------------------------------------------------------') 
+        time.sleep(30)
         subprocess.run([
             'docker-compose',
             'run',
